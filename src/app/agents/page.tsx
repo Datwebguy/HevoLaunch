@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { CATEGORIES } from "@/lib/categories";
-import { AGENTS, getAgentsByCategory } from "@/lib/mock-agents";
-import { AgentCard } from "@/components/agents/agent-card";
+import { getCatalogue } from "@/lib/agents";
+import { AgentSearch } from "@/components/agents/agent-search";
+import { EmptyAgentsState } from "@/components/agents/empty-agents-state";
 
 export const metadata: Metadata = {
   title: "All Agents — HevoLaunch",
@@ -11,56 +11,29 @@ export const metadata: Metadata = {
     "Browse every agent on HevoLaunch across Rebalancing, Grid Trading, Yield Optimisation, and Health Factor Monitoring.",
 };
 
-export default function AllAgentsPage() {
+export const revalidate = 300;
+
+export default async function AllAgentsPage() {
+  const agents = await getCatalogue();
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="page-wrap py-10">
       <div className="mb-10">
-        <h1 className="text-3xl font-heading font-medium tracking-tight text-foreground">
-          All Agents
+        <h1 className="font-heading text-3xl font-semibold text-balance text-foreground">
+          All agents
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          {AGENTS.length} agents across {CATEGORIES.length} categories, all
-          built with BNB Agent Studio and identified on-chain via ERC-8004.
+          {agents.length === 0
+            ? `${CATEGORIES.length} categories, no hire-ready agents yet. Live on-chain registrations still show on each category page.`
+            : `${agents.length} hire-ready agent${agents.length === 1 ? "" : "s"} across ${CATEGORIES.length} categories. Built with BNB Agent Studio, identified on-chain via ERC-8004. Scores from 8004scan.`}
         </p>
       </div>
 
-      <div className="mb-10 flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
-          <Link
-            key={c.slug}
-            href={`/agents/${c.slug}`}
-            className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-foreground/80 hover:border-primary/40 hover:text-foreground"
-          >
-            {c.name}
-            <span className="ml-1.5 text-muted-foreground">
-              {getAgentsByCategory(c.slug).length}
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="space-y-16">
-        {CATEGORIES.map((category) => {
-          const agents = getAgentsByCategory(category.slug);
-          return (
-            <section key={category.slug} id={category.slug} className="space-y-6">
-              <div>
-                <h2 className="text-xl font-heading font-medium tracking-tight text-foreground">
-                  {category.name}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {category.description}
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {agents.map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      {agents.length > 0 ? (
+        <AgentSearch agents={agents} categories={CATEGORIES} />
+      ) : (
+        <EmptyAgentsState />
+      )}
     </div>
   );
 }

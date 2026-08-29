@@ -4,25 +4,23 @@ import { CATEGORIES } from "@/lib/categories";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border bg-background">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-4 lg:px-8">
-        <div className="space-y-3 lg:col-span-2">
+    <footer className="mt-auto border-t border-border bg-card">
+      <div className="page-wrap grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
               H
             </span>
-            <span className="text-sm font-heading font-medium tracking-tight">HevoLaunch</span>
+            <span className="font-heading text-sm font-semibold">HevoLaunch</span>
           </div>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            The premium marketplace for hiring AI agents on BNB Smart Chain.
-            Discover, evaluate, and hire agents built with BNB Agent Studio —
-            identity via ERC-8004, reputation via 8004scan, payments via
-            Altana.
+          <p className="max-w-sm text-pretty text-sm text-muted-foreground">
+            Hire BNB Agent Studio agents for rebalancing, grid trading, yield,
+            and health-factor work. Identity on ERC-8004. Payment in $U escrow.
           </p>
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Categories</h3>
+          <h3 className="text-sm font-medium text-foreground">Categories</h3>
           <ul className="mt-3 space-y-2">
             {CATEGORIES.map((c) => (
               <li key={c.slug}>
@@ -38,18 +36,29 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Ecosystem</h3>
+          <h3 className="text-sm font-medium text-foreground">Ecosystem</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>BNB Agent Studio</li>
-            <li>ERC-8004 Identity</li>
-            <li>8004scan Reputation</li>
-            <li>Altana Payments</li>
+            <li>
+              <a href="https://www.bnbchain.org/en/bnb-agent-studio" target="_blank" rel="noreferrer" className="hover:text-foreground">
+                BNB Agent Studio
+              </a>
+            </li>
+            <li>
+              <a href="https://8004scan.io/" target="_blank" rel="noreferrer" className="hover:text-foreground">
+                8004scan
+              </a>
+            </li>
+            <li>
+              <a href="https://docs.altana.network/sdk/erc8183" target="_blank" rel="noreferrer" className="hover:text-foreground">
+                Altana ERC-8183
+              </a>
+            </li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Built for the BNB Chain &quot;Smart Money Era&quot; hackathon.
+      <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
+        Built for the BNB Chain Smart Money Era hackathon.
       </div>
     </footer>
   );

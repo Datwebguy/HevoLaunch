@@ -15,7 +15,8 @@ import type { Agent } from "@/lib/types";
  *    node_modules/@altananetwork/sdk/dist/erc8183.js for the source values.
  *
  * We target BNB Testnet (97) throughout, matching lib/altana.ts and
- * lib/wagmi.ts.
+ * lib/wagmi.ts. 8004scan pages for curated agents are
+ * https://8004scan.io/agents/97/<tokenId> — never chain 56.
  */
 
 export const IDENTITY_CHAIN_ID = 97;

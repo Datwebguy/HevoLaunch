@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, Copy, LogOut, Wallet } from "lucide-react";
-import { bsc } from "wagmi/chains";
+import { bscTestnet } from "wagmi/chains";
 import {
   useAccount,
   useChainId,
@@ -37,9 +37,9 @@ export function ConnectWalletButton() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" disabled={isPending}>
+          <Button size="sm" variant="outline" disabled={isPending}>
             <Wallet />
-            {isPending ? "Connecting..." : "Connect Wallet"}
+            {isPending ? "Connecting..." : "Connect wallet"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -58,7 +58,7 @@ export function ConnectWalletButton() {
     );
   }
 
-  const onWrongNetwork = chainId !== bsc.id;
+  const onWrongNetwork = chainId !== bscTestnet.id;
 
   return (
     <DropdownMenu>
@@ -66,7 +66,7 @@ export function ConnectWalletButton() {
         <Button size="sm" variant="outline">
           <span
             className={`size-2 rounded-full ${
-              onWrongNetwork ? "bg-destructive" : "bg-[#22C55E]"
+              onWrongNetwork ? "bg-destructive" : "bg-success"
             }`}
             aria-hidden
           />
@@ -77,6 +77,9 @@ export function ConnectWalletButton() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           {chain?.name ?? "Unknown network"}
+          <span className="mt-0.5 block font-normal text-muted-foreground">
+            Hiring runs on BNB Testnet
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -91,8 +94,8 @@ export function ConnectWalletButton() {
           {copied ? "Copied" : "Copy address"}
         </DropdownMenuItem>
         {onWrongNetwork && (
-          <DropdownMenuItem onSelect={() => switchChain({ chainId: bsc.id })}>
-            Switch to BNB Smart Chain
+          <DropdownMenuItem onSelect={() => switchChain({ chainId: bscTestnet.id })}>
+            Switch to BNB Testnet
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

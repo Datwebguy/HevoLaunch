@@ -1,17 +1,25 @@
 /**
- * 8004scan public API client — https://8004scan.io/developers
+ * 8004scan API client — https://8004scan.io/developers
  *
- * Base URL, endpoints, and field names below were verified with live
- * requests against the real API (not just the published OpenAPI summary,
- * which turned out to disagree with the live response on a few fields —
- * e.g. `token_id` is a string on the wire, not an integer).
+ * Two separate surfaces exist, verified live, not assumed from docs:
  *
- * Anonymous access is unauthenticated but rate-limited (10 req/min,
- * 100/day) — no Pro API key is configured in this environment. Calls made
- * from Server Components (category pages) go through Next's `fetch` cache
- * with a revalidate window (see lib/live-agents.ts) so real visitor
- * traffic doesn't translate 1:1 into API calls; every call site still
- * fails soft (empty result) rather than breaking the page.
+ *  - `/api/v1/public/*` — anonymous, 10 req/min. Response envelope:
+ *    `{ success, data, meta: { pagination } }`.
+ *  - `/api/v1/*` (no "public") — the real Pro-tier surface. An API key
+ *    here (`X-API-Key` header) actually raises the rate limit (confirmed
+ *    via response headers: 180/min, 20000/day vs 10/min on the public
+ *    path even with a key attached — the public path ignores the key
+ *    entirely). Response envelope is different: list endpoints return
+ *    `{ items, total, limit, offset }`, no `success`/`data` wrapper; a
+ *    single agent returns the agent object directly, no wrapper at all.
+ *
+ * SCAN_8004_API_KEY in .env.local (server-only, never NEXT_PUBLIC_ — these
+ * calls only ever run in Server Components) switches listAgents onto the
+ * authenticated surface. Unset, it falls back to the public one, so this
+ * still works with nothing configured. Calls go through Next's `fetch`
+ * cache with a revalidate window (see lib/live-agents.ts) so real visitor
+ * traffic doesn't translate 1:1 into API calls; every call site fails
+ * soft (empty result) rather than breaking the page.
  *
  * Confirmed live: chain_id 56 = BSC mainnet, 97 = BSC Testnet. The
  * registry contract at 97 (0x8004a818bfb912233c491871b3d84c89a494bd9e)
@@ -19,7 +27,19 @@
  * — see lib/erc8004.ts — which cross-confirms both sources.
  */
 
-const BASE_URL = "https://8004scan.io/api/v1/public";
+import type { EndpointStatus } from "@/lib/types";
+
+const PUBLIC_BASE_URL = "https://8004scan.io/api/v1/public";
+const AUTH_BASE_URL = "https://8004scan.io/api/v1";
+const SCAN_SITE = "https://8004scan.io";
+
+export function scanAgentUrl(chainId: number, tokenId: string | number): string {
+  return `${SCAN_SITE}/agents/${chainId}/${tokenId}`;
+}
+
+export interface ScanAgentHealth {
+  overall_status?: string;
+}
 
 export interface ScanAgent {
   id: string;
@@ -33,15 +53,26 @@ export interface ScanAgent {
   description: string;
   image_url: string | null;
   is_verified: boolean;
+  is_endpoint_verified?: boolean;
   star_count: number;
   supported_protocols: string[];
   x402_supported: boolean;
-  /** 0-100 scale — not the 0-5 star scale HevoLaunch's own listings use for display. */
+  /** 0-100 scale. */
   total_score: number;
   total_feedbacks: number;
   average_score: number;
+  a2a_endpoint?: string | null;
+  health_status?: ScanAgentHealth | null;
   created_at: string;
   updated_at: string;
+}
+
+export function scanEndpointStatus(agent: ScanAgent): EndpointStatus {
+  const overall = agent.health_status?.overall_status;
+  if (overall === "healthy") return "healthy";
+  if (overall === "unhealthy" || overall === "degraded") return "unhealthy";
+  if (agent.is_endpoint_verified) return "healthy";
+  return "unknown";
 }
 
 export interface ScanStats {
@@ -54,31 +85,35 @@ export interface ScanStats {
   average_feedback_score: number;
 }
 
-interface ScanListResponse<T> {
+interface PublicListResponse<T> {
   success: boolean;
   data: T[];
   meta: { pagination: { page: number; limit: number; total: number; hasMore: boolean } };
 }
 
-interface ScanResponse<T> {
+interface PublicItemResponse<T> {
   success: boolean;
   data: T;
 }
 
-async function get<T>(
-  path: string,
-  params?: Record<string, string | number | boolean>,
-  revalidateSeconds = 300
-): Promise<T> {
-  const url = new URL(BASE_URL + path);
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      url.searchParams.set(key, String(value));
-    }
-  }
+interface AuthListResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
-  const res = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
+function apiKey(): string | undefined {
+  return process.env.SCAN_8004_API_KEY;
+}
+
+async function fetchJson<T>(
+  url: string,
+  headers: Record<string, string>,
+  revalidateSeconds: number
+): Promise<T> {
+  const res = await fetch(url, {
+    headers: { Accept: "application/json", ...headers },
     next: { revalidate: revalidateSeconds },
     // A slow 8004scan response shouldn't stall the whole page render —
     // fail fast and let callers fall back to an empty/cached result.
@@ -90,8 +125,22 @@ async function get<T>(
   return res.json();
 }
 
+function withParams(base: string, path: string, params?: Record<string, string | number | boolean>) {
+  const url = new URL(base + path);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, String(value));
+    }
+  }
+  return url.toString();
+}
+
 export async function getStats(): Promise<ScanStats> {
-  const res = await get<ScanResponse<ScanStats>>("/stats");
+  const res = await fetchJson<PublicItemResponse<ScanStats>>(
+    withParams(PUBLIC_BASE_URL, "/stats"),
+    {},
+    300
+  );
   return res.data;
 }
 
@@ -105,14 +154,53 @@ export interface ListAgentsParams {
 export async function listAgents(
   params: ListAgentsParams
 ): Promise<{ agents: ScanAgent[]; total: number }> {
-  const res = await get<ScanListResponse<ScanAgent>>("/agents", {
-    ...params,
-    ...(params.limit ? { limit: params.limit } : {}),
-  });
+  const key = apiKey();
+
+  if (key) {
+    // Pro tier (180 req/min) has real headroom — refresh more often than
+    // the anonymous fallback below.
+    //
+    // Confirmed live (not assumed): the authenticated surface takes
+    // snake_case query keys (chain_id, sort_by) — the public surface's
+    // camelCase names (chainId, sortBy) are silently ignored here rather
+    // than erroring, which previously let cross-chain agents leak into
+    // a "BNB Chain" filtered result with no error to catch it.
+    const query: Record<string, string | number | boolean> = {
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+      ...(params.chainId !== undefined ? { chain_id: params.chainId } : {}),
+      ...(params.sortBy ? { sort_by: params.sortBy } : {}),
+    };
+    const res = await fetchJson<AuthListResponse<ScanAgent>>(
+      withParams(AUTH_BASE_URL, "/agents", query),
+      { "X-API-Key": key },
+      60
+    );
+    return { agents: res.items, total: res.total };
+  }
+
+  const query = { ...params, ...(params.limit ? { limit: params.limit } : {}) };
+  const res = await fetchJson<PublicListResponse<ScanAgent>>(
+    withParams(PUBLIC_BASE_URL, "/agents", query),
+    {},
+    300
+  );
   return { agents: res.data, total: res.meta.pagination.total };
 }
 
 export async function getAgent(chainId: number, tokenId: string): Promise<ScanAgent> {
-  const res = await get<ScanResponse<ScanAgent>>(`/agents/${chainId}/${tokenId}`);
+  const key = apiKey();
+  if (key) {
+    return fetchJson<ScanAgent>(
+      withParams(AUTH_BASE_URL, `/agents/${chainId}/${tokenId}`),
+      { "X-API-Key": key },
+      300
+    );
+  }
+  const res = await fetchJson<PublicItemResponse<ScanAgent>>(
+    withParams(PUBLIC_BASE_URL, `/agents/${chainId}/${tokenId}`),
+    {},
+    300
+  );
   return res.data;
 }

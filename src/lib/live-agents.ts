@@ -3,12 +3,13 @@ import type { Category } from "@/lib/types";
 
 /**
  * Server-side live-data layer for category pages — real agents registered
- * on BNB Smart Chain mainnet (chainId 56), fetched via 8004scan's public
- * API and matched to a category by `category.discoveryQuery` (see
+ * on BNB Smart Chain mainnet (chainId 56), fetched via 8004scan and
+ * matched to a category by `category.discoveryQuery` (see
  * lib/categories.ts). Runs in a Server Component with Next's fetch cache
- * (5 min revalidate, set in lib/8004scan.ts) rather than client-side, so
- * a page full of visitors doesn't turn into a burst of calls against
- * 8004scan's 10 req/min anonymous limit.
+ * (see lib/8004scan.ts for the revalidate window — shorter on the Pro
+ * tier's 180 req/min than the 10 req/min anonymous fallback) rather than
+ * client-side, so a page full of visitors doesn't turn into a burst of
+ * direct API calls.
  *
  * Real registrations right now have zero feedback (the whole ERC-8004
  * ecosystem on BSC is new) and no advertised price — ERC-8183 has the
@@ -28,14 +29,18 @@ export interface LiveAgentsResult {
 }
 
 export async function getLiveAgentsForCategory(
-  category: Pick<Category, "discoveryQuery">
+  category: Pick<Category, "discoveryQuery">,
+  query?: string
 ): Promise<LiveAgentsResult> {
+  const trimmed = query?.trim();
   try {
     const { agents, total } = await listAgents({
       chainId: MAINNET_CHAIN_ID,
-      search: category.discoveryQuery,
+      search: trimmed || category.discoveryQuery,
       sortBy: "total_score",
-      limit: LIVE_AGENTS_PER_CATEGORY,
+      // A user-typed search is a deliberate dig through the whole live
+      // registry, not the default at-a-glance preview — show more.
+      limit: trimmed ? 12 : LIVE_AGENTS_PER_CATEGORY,
     });
     return { agents, total, failed: false };
   } catch {

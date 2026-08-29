@@ -24,28 +24,38 @@ export interface Category {
   discoveryQuery: string;
 }
 
-export type ChainName = "BNB Smart Chain";
+export type ChainName = "BNB Smart Chain" | "BNB Testnet";
+
+/** A2A/MCP endpoint health as reported by 8004scan, when we have it. */
+export type EndpointStatus = "healthy" | "unhealthy" | "unknown";
 
 /** Reputation summary as surfaced by 8004scan. */
 export interface AgentReputation {
-  /** 0-5 star rating aggregated from on-chain feedback. */
+  /** 8004scan `total_score` (0-100). Not a 5-star rating. */
   rating: number;
-  /** Total number of completed jobs / hires. */
+  /** Unused for display — 8004scan does not publish a completed-jobs count. */
   completedJobs: number;
-  /** Percentage of jobs completed successfully, 0-100. */
+  /** Unused for display unless reviewCount > 0. Never invent 100% on zero jobs. */
   successRate: number;
-  /** Number of distinct reviewers/employers. */
+  /** 8004scan `total_feedbacks`. */
   reviewCount: number;
 }
 
-/** Pricing as exposed through Altana (x402 + ERC-8183 sessions). */
+/**
+ * Pricing as exposed through Altana (x402 + ERC-8183 sessions).
+ * "$U" is the real ERC-8183 escrow currency (United Stables) — what a
+ * bag-deployed seller actually gets paid in. "USDC"/"BNB" stay for
+ * curated-listing display purposes.
+ */
 export interface AgentPricing {
   model: "per-session" | "per-task" | "subscription" | "performance-fee";
   amount: number;
-  currency: "USDC" | "BNB";
+  currency: "USDC" | "BNB" | "$U";
   /** Human readable cadence, e.g. "per month", "per rebalance". */
   cadence: string;
 }
+
+export type EndpointProtocol = "mcp" | "a2a" | "unknown";
 
 export interface Agent {
   id: string;
@@ -62,13 +72,25 @@ export interface Agent {
   agentId: number;
   /** The agent's Altana wallet address: ERC-8004 token owner and ERC-8183 `provider`. */
   agentIdentityAddress: `0x${string}`;
+  /** ERC-8004 registry chain. Curated Hevo agents are registered on BSC testnet (97). */
+  identityChainId: number;
   chain: ChainName;
   builtWith: "BNB Agent Studio";
   reputation: AgentReputation;
   pricing: AgentPricing;
   capabilities: string[];
+  /** True only when 8004scan says `is_verified`. Never set locally. */
   verified: boolean;
   featured: boolean;
+  endpointStatus: EndpointStatus;
+  /** Name on the ERC-8004 record, which may still be the bag default (`studio-agent`). */
+  onChainName?: string;
+  /** A2A/MCP endpoint URL from 8004scan for direct agent calls. */
+  a2aEndpoint?: string | null;
+  /** Protocol type for the endpoint (MCP or A2A). */
+  endpointProtocol?: EndpointProtocol;
+  /** Whether the agent supports x402 payment protocol for per-request payments. */
+  x402Supported?: boolean;
 }
 
 /**
@@ -98,13 +120,23 @@ export const JOB_STATUS = [
 
 export type JobStatusName = (typeof JOB_STATUS)[number];
 
-export type HireSessionStatus = JobStatusName | "FAILED";
+/**
+ * "FAILED" and "UNFUNDED" are our own additions, not on-chain statuses:
+ * FAILED is a pre-chain funding-call error, UNFUNDED means the hiring
+ * wallet's real $U balance was checked and came up short before any
+ * transaction was attempted.
+ */
+export type HireSessionStatus = JobStatusName | "FAILED" | "UNFUNDED";
 
 export interface HireSession {
   /** Local record id (not the on-chain job id). */
   id: string;
   /** ERC-8183 job id once the hire has been submitted, as a string (bigint-safe for localStorage/JSON). */
   jobId?: string;
+  /** The real funding transaction hash, once the job has been funded. */
+  txHash?: `0x${string}`;
+  /** The real deliverable URL, once the seller has submitted one on-chain. */
+  deliverableUrl?: string;
   agentId: string;
   agentSlug: string;
   agentCategory: CategorySlug;
@@ -120,14 +152,16 @@ export interface HireSession {
   /** Unix seconds after which an unfunded/undelivered job can be reclaimed. */
   expiredAt: number;
   status: HireSessionStatus;
+  /** Relay or RPC error message when status is FAILED, or a status-refresh error. */
+  error?: string;
   createdAt: number;
   updatedAt: number;
 }
 
 /**
  * A single review as it would be sourced from 8004scan's reputation feed.
- * No 8004scan API docs have been provided yet, so this stays mock data —
- * unlike the Altana types above, nothing here is grounded in a real schema.
+ * Not rendered anywhere yet — 8004scan's public agent payload exposes
+ * `total_feedbacks` / `average_score`, not a per-review list we can show.
  */
 export interface AgentReview {
   id: string;
@@ -143,4 +177,62 @@ export interface AgentActivityEntry {
   label: string;
   detail: string;
   relativeTime: string;
+}
+
+/**
+ * x402 payment protocol types for per-request agent payments.
+ * Based on the x402 specification for Agent-to-Agent payments.
+ */
+export type X402PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
+export interface X402PaymentRequest {
+  /** The agent's endpoint URL to call. */
+  endpoint: string;
+  /** The payment amount in the specified currency. */
+  amount: string;
+  /** Currency for payment (typically $U for ERC-8183 compatibility). */
+  currency: string;
+  /** Optional payment description/metadata. */
+  description?: string;
+  /** The agent's identity address for payment routing. */
+  recipientAddress: `0x${string}`;
+}
+
+export interface X402PaymentResponse {
+  /** Payment status. */
+  status: X402PaymentStatus;
+  /** Transaction hash if payment was successful. */
+  txHash?: `0x${string}`;
+  /** Payment ID for tracking. */
+  paymentId?: string;
+  /** Error message if payment failed. */
+  error?: string;
+  /** Timestamp of payment. */
+  timestamp: number;
+}
+
+export interface EndpointCallRequest {
+  /** The agent endpoint to call. */
+  endpoint: string;
+  /** Method to call (for MCP/A2A protocols). */
+  method?: string;
+  /** Parameters for the endpoint call. */
+  parameters?: Record<string, string | number | boolean | null | undefined>;
+  /** Whether this requires x402 payment. */
+  requiresPayment: boolean;
+  /** Payment details if payment is required. */
+  payment?: X402PaymentRequest;
+}
+
+export interface EndpointCallResponse {
+  /** Whether the call was successful. */
+  success: boolean;
+  /** Response data from the agent. */
+  data?: Record<string, string | number | boolean | null | undefined>;
+  /** Error message if the call failed. */
+  error?: string;
+  /** Payment result if payment was involved. */
+  payment?: X402PaymentResponse;
+  /** Response timestamp. */
+  timestamp: number;
 }

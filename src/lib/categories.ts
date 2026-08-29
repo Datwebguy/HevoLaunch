@@ -11,8 +11,8 @@ export const CATEGORIES: Category[] = [
     name: "Rebalancing",
     shortName: "Rebalancing",
     description:
-      "Agents that keep a wallet or vault's asset allocation aligned to a target, automatically trading as prices drift.",
-    tagline: "Keep your portfolio balanced, automatically.",
+      "Agents that read a wallet against a target allocation and return the trades needed to close the drift. They recommend; they do not execute.",
+    tagline: "See the trades that close the drift.",
     discoveryQuery: "rebalanc",
   },
   {
@@ -20,8 +20,8 @@ export const CATEGORIES: Category[] = [
     name: "Grid Trading",
     shortName: "Grid Trading",
     description:
-      "Agents that place and manage buy/sell grids across a price range to capture volatility around a pair.",
-    tagline: "Profit from volatility with automated buy/sell grids.",
+      "Agents that design a grid for a pair and price range — levels, order sizes, expected capture — as a plan you or your bot can execute.",
+    tagline: "Get a grid plan for a pair and range.",
     discoveryQuery: "grid",
   },
   {
@@ -29,8 +29,8 @@ export const CATEGORIES: Category[] = [
     name: "Yield Optimisation",
     shortName: "Yield",
     description:
-      "Agents that move capital across lending markets, LPs, and vaults on BNB Chain to maximise risk-adjusted yield.",
-    tagline: "Put idle capital to work at the best available yield.",
+      "Agents that compare lending and staking markets on BNB Chain and recommend where to allocate for a size and risk tier. They do not move funds.",
+    tagline: "Find where to put idle capital.",
     discoveryQuery: "yield",
   },
   {
@@ -38,8 +38,8 @@ export const CATEGORIES: Category[] = [
     name: "Health Factor Monitoring",
     shortName: "Health Factor",
     description:
-      "Agents that watch lending positions and act — topping up collateral or de-risking — before liquidation risk hits.",
-    tagline: "Never get liquidated while you sleep.",
+      "Agents that read a lending position's health factor against a safety threshold and recommend how to restore a buffer. They do not top up or repay.",
+    tagline: "Check a position before it gets liquidated.",
     discoveryQuery: "health factor",
   },
 ];
