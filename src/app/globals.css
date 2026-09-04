@@ -52,6 +52,13 @@
  * accent used as a physical mark (left rail + Hire), never as a wash.
  */
 :root {
+  /* Self-hosted font families (see @fontsource imports in layout.tsx). */
+  --font-outfit: "Outfit Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-syne: "Syne Variable", "Outfit Variable", ui-sans-serif, sans-serif;
+  --font-plex-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
   --background: #f2f3f5;
   --foreground: #17181a;
   --card: #ffffff;
