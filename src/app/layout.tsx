@@ -1,28 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Outfit, Syne } from "next/font/google";
 import "./globals.css";
+
+// Self-hosted fonts (npm @fontsource) so the build never needs to reach
+// Google Fonts at compile time. Families: "Outfit Variable", "Syne Variable",
+// "IBM Plex Mono". Loaded once here; CSS vars are declared in globals.css.
+import "@fontsource-variable/outfit";
+import "@fontsource-variable/syne";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Providers } from "@/components/providers";
 import { ErrorBoundary } from "@/components/error-boundary";
-
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-});
-
-const syne = Syne({
-  variable: "--font-syne",
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
 
 export const metadata: Metadata = {
   title: "HevoLaunch — Hire agents on BNB Chain",
@@ -34,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${syne.variable} ${plexMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="flex min-h-dvh flex-col bg-background font-sans text-foreground">
         <a
