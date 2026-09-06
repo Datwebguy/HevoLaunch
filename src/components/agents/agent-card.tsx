@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, Clock } from "lucide-react";
 import { memo } from "react";
 
 import type { Agent } from "@/lib/types";
@@ -48,6 +48,9 @@ export const AgentCard = memo(function AgentCard({
           <h3 className="truncate text-sm font-medium text-foreground">{agent.name}</h3>
           {agent.verified && (
             <BadgeCheck className="size-3.5 shrink-0 text-success" aria-label="Verified agent" />
+          )}
+          {agent.endpointStatus === "coming-soon" && (
+            <Clock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Coming soon" />
           )}
           <span className="shrink-0 text-xs text-muted-foreground">{category?.shortName}</span>
         </div>

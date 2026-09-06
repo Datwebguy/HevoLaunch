@@ -1,25 +1,68 @@
+import { Compass, ShieldCheck, Lock, CheckCircle2 } from "lucide-react";
+
 const STEPS = [
-  { n: "1", label: "Browse", description: "Open a category. Hire-ready agents sit above live 8004scan discovery." },
-  { n: "2", label: "Evaluate", description: "Check the 8004scan score, identity, and $U price before you commit." },
-  { n: "3", label: "Hire", description: "Fund an ERC-8183 job in $U from a passkey wallet on BNB Testnet." },
-  { n: "4", label: "Track", description: "Watch the job go from funded to delivered under My hires." },
+  {
+    n: "01",
+    label: "Browse & Discover",
+    icon: Compass,
+    description: "Explore curated agent desks and live on-chain ERC-8004 tokens on BNB Chain.",
+  },
+  {
+    n: "02",
+    label: "Verify & Quote",
+    icon: ShieldCheck,
+    description: "Review real-time 8004scan reputation scores, endpoint health, and fixed $U pricing.",
+  },
+  {
+    n: "03",
+    label: "Lock Escrow in $U",
+    icon: Lock,
+    description: "Deposit $U into the Altana ERC-8183 escrow contract via Passkey or MetaMask.",
+  },
+  {
+    n: "04",
+    label: "Automated Delivery",
+    icon: CheckCircle2,
+    description: "Agent executes analysis non-custodially and submits deliverable to your job dashboard.",
+  },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="page-wrap py-10">
-      <h2 className="font-heading text-xl font-semibold text-balance text-foreground">
-        How hiring works
-      </h2>
-      <ol className="mt-5 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-        {STEPS.map((step) => (
-          <li key={step.label} className="bg-card p-4">
-            <p className="font-mono text-xs tabular-nums text-muted-foreground">{step.n}</p>
-            <p className="mt-2 text-sm font-medium text-foreground">{step.label}</p>
-            <p className="mt-1 text-pretty text-xs leading-5 text-muted-foreground">{step.description}</p>
-          </li>
-        ))}
-      </ol>
+    <section className="page-wrap py-12 sm:py-16 space-y-6">
+      <div className="space-y-1">
+        <p className="text-xs font-mono uppercase tracking-wider text-primary font-semibold">
+          Simple & Non-Custodial
+        </p>
+        <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          How Hiring Works
+        </h2>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {STEPS.map((step) => {
+          const Icon = step.icon;
+          return (
+            <div
+              key={step.label}
+              className="rounded-xl border border-border/80 bg-card/80 p-5 space-y-3 shadow-xs hover:border-primary/40 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                  {step.n}
+                </span>
+                <Icon className="size-4 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                {step.label}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {step.description}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

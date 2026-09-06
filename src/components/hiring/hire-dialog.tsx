@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { erc20Abi, formatUnits } from "viem";
+import { erc20Abi, formatUnits, parseEther, parseUnits } from "viem";
 import {
   useAccount,
   useChainId,
+  useSendTransaction,
   useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -24,6 +25,7 @@ import type { Agent, HireSession } from "@/lib/types";
 import {
   buildHireSession,
   checkFunding,
+  createFreshHiringWallet,
   createOrLoadHiringWallet,
   explorerTxUrl,
   fundHireSession,
@@ -80,6 +82,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   const connectedChainId = useChainId();
   const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync, isPending: sending, reset: resetSend } = useWriteContract();
+  const { sendTransactionAsync, isPending: sendingGas } = useSendTransaction();
   const [sendHash, setSendHash] = useState<`0x${string}` | undefined>(undefined);
   const [sendError, setSendError] = useState<string | null>(null);
   const { isLoading: confirmingSend, isSuccess: sendConfirmed } = useWaitForTransactionReceipt({
@@ -91,7 +94,14 @@ export function HireDialog({ agent }: { agent: Agent }) {
     // Reacting to an external system (the chain confirming this transfer),
     // not synchronizing derived render state — the sanctioned effect case.
     if (sendConfirmed) {
-      handleRetry();
+      if (wallet) {
+        checkFunding(wallet, parseUnits(String(agent.pricing.amount), 18))
+          .then((check) => setFundingCheck(check))
+          .catch(() => {});
+      }
+      if (stage === "result" && session?.status === "UNFUNDED") {
+        handleRetry();
+      }
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSendHash(undefined);
       resetSend();
@@ -100,22 +110,43 @@ export function HireDialog({ agent }: { agent: Agent }) {
   }, [sendConfirmed]);
 
   async function handleSendFromConnectedWallet() {
-    if (!wallet || !session) return;
+    if (!wallet) return;
     setSendError(null);
     try {
       if (connectedChainId !== bscTestnet.id) {
         await switchChainAsync({ chainId: bscTestnet.id });
       }
+      const transferAmount = session
+        ? BigInt(session.budget)
+        : parseUnits(String(agent.pricing.amount), 18);
       const hash = await writeContractAsync({
         address: PAYMENT_TOKEN_ADDRESS,
         abi: erc20Abi,
         functionName: "transfer",
-        args: [wallet.address, BigInt(session.budget)],
+        args: [wallet.address, transferAmount],
         chainId: bscTestnet.id,
       });
       setSendHash(hash);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : "Transfer was rejected or failed.");
+    }
+  }
+
+  async function handleSendGasFromConnectedWallet() {
+    if (!wallet) return;
+    setSendError(null);
+    try {
+      if (connectedChainId !== bscTestnet.id) {
+        await switchChainAsync({ chainId: bscTestnet.id });
+      }
+      const hash = await sendTransactionAsync({
+        to: wallet.address,
+        value: parseEther("0.01"),
+        chainId: bscTestnet.id,
+      });
+      setSendHash(hash);
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Gas transfer was rejected or failed.");
     }
   }
 
@@ -126,7 +157,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
     setSession(null);
     setWalletError(null);
 
-    const existing = getStoredHiringWallet();
+    const existing = getStoredHiringWallet(connectedAddress);
     if (!existing) {
       setStage("wallet");
       return;
@@ -134,11 +165,15 @@ export function HireDialog({ agent }: { agent: Agent }) {
 
     // Rehydrating an existing wallet never prompts WebAuthn — safe to run
     // on open, unlike creating a brand new one.
-    const result = await createOrLoadHiringWallet();
+    const result = await createOrLoadHiringWallet(connectedAddress);
     if (result.ok) {
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
+      // Pre-check funding in the background for instant review feedback
+      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
+        .then((check) => setFundingCheck(check))
+        .catch(() => {});
     } else {
       setWalletError(result.error);
       setStage("wallet");
@@ -148,12 +183,15 @@ export function HireDialog({ agent }: { agent: Agent }) {
   async function handleCreateWallet() {
     setConnecting(true);
     setWalletError(null);
-    const result = await createOrLoadHiringWallet();
+    const result = await createOrLoadHiringWallet(connectedAddress);
     setConnecting(false);
     if (result.ok) {
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
+      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
+        .then((check) => setFundingCheck(check))
+        .catch(() => {});
     } else {
       setWalletError(result.error);
     }
@@ -162,14 +200,34 @@ export function HireDialog({ agent }: { agent: Agent }) {
   async function handleRecoverWallet() {
     setRecovering(true);
     setWalletError(null);
-    const result = await recoverHiringWallet();
+    const result = await recoverHiringWallet(connectedAddress);
     setRecovering(false);
     if (result.ok) {
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
+      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
+        .then((check) => setFundingCheck(check))
+        .catch(() => {});
     } else {
       setWalletError(result.error);
+    }
+  }
+
+  async function handleResetAndCreateFreshWallet() {
+    setConnecting(true);
+    setWalletError(null);
+    const result = await createFreshHiringWallet(connectedAddress);
+    setConnecting(false);
+    if (result.ok) {
+      setWallet(result.wallet);
+      setSigner(result.signer);
+      setStage("review");
+      setSession(null);
+      setFundingCheck(null);
+    } else {
+      setWalletError(result.error);
+      setStage("wallet");
     }
   }
 
@@ -177,7 +235,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
     if (!wallet || !signer || fundingLock.current) return;
     fundingLock.current = true;
     setBusy(true);
-    const draft = buildHireSession(agent, wallet.address, task);
+    const draft = buildHireSession(agent, wallet.address, task, connectedAddress as `0x${string}` | undefined);
     setSession(draft);
     setStage("funding");
 
@@ -225,29 +283,31 @@ export function HireDialog({ agent }: { agent: Agent }) {
         {stage === "wallet" && (
           <>
             <DialogHeader>
-              <DialogTitle>Set up your hiring wallet</DialogTitle>
+              <DialogTitle>Set up your hiring passkey</DialogTitle>
               <DialogDescription>
                 Hiring runs on BNB Testnet through Altana ERC-8183 escrow.
-                You need a passkey wallet to fund jobs — created once, no
-                seed phrase. The header wallet is only for moving $U onto
-                this hiring wallet.
+                Your browser will prompt you to create a secure passkey (Windows Hello, Touch ID, or Google Account).
               </DialogDescription>
             </DialogHeader>
 
             {walletError && (
               <Alert variant="destructive">
                 <AlertTriangle />
-                <AlertTitle>Couldn&apos;t set up a hiring wallet</AlertTitle>
+                <AlertTitle>Passkey setup was not completed</AlertTitle>
                 <AlertDescription>{walletError}</AlertDescription>
               </Alert>
             )}
 
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-4">
-              <Fingerprint className="size-8 shrink-0 text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Your device will prompt for a fingerprint, face, or security
-                key. The key never leaves your device — Altana never
-                custodies it.
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <Fingerprint className="size-4 text-primary" />
+                <span>What is this browser prompt?</span>
+              </div>
+              <p>
+                When you click below, Chrome will ask <strong>&quot;Choose where to save your passkey for localhost&quot;</strong>.
+              </p>
+              <p>
+                Select your <strong>Google Account</strong>, <strong>Windows Hello</strong>, or <strong>This device</strong>. This creates a hardware-secured key so you can sign escrow intents without managing private keys or seed phrases.
               </p>
             </div>
 
@@ -326,12 +386,76 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <span className="font-semibold text-foreground">{budgetLabel}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2.5">
-                <span className="text-muted-foreground">Hiring wallet</span>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Hiring wallet</span>
+                  <button
+                    type="button"
+                    onClick={handleResetAndCreateFreshWallet}
+                    className="text-left text-[11px] text-primary hover:underline"
+                    disabled={busy || connecting}
+                  >
+                    {connecting ? "Setting up passkey..." : "Reset / New Passkey"}
+                  </button>
+                </div>
                 <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
                   {truncate(wallet.address)}
                   <CopyButton value={wallet.address} />
                 </span>
               </div>
+
+              {fundingCheck && (
+                <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground font-medium">Smart Account Balance</span>
+                    <span className="font-mono text-[11px] text-foreground">
+                      {formatUnits(fundingCheck.balanceRaw, 18).slice(0, 6)} $U • {formatUnits(fundingCheck.nativeBalanceRaw, 18).slice(0, 6)} tBNB
+                    </span>
+                  </div>
+
+                  {(needsU || needsGas) && isConnected && connectedAddress ? (
+                    <div className="border-t border-border/60 pt-2 space-y-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Deposit from connected wallet ({truncate(connectedAddress)}):
+                      </p>
+                      {sendError && (
+                        <p className="text-[11px] text-destructive">{sendError}</p>
+                      )}
+                      <div className="flex flex-col gap-1.5">
+                        {needsU && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full justify-between text-xs h-8"
+                            onClick={handleSendFromConnectedWallet}
+                            disabled={sending || sendingGas || confirmingSend}
+                          >
+                            <span>
+                              {sending ? "Confirm $U in wallet..." : confirmingSend ? "Sending $U..." : `Deposit ${budgetLabel} from MetaMask`}
+                            </span>
+                            <ArrowRight className="size-3" />
+                          </Button>
+                        )}
+                        {needsGas && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full justify-between text-xs h-8"
+                            onClick={handleSendGasFromConnectedWallet}
+                            disabled={sending || sendingGas || confirmingSend}
+                          >
+                            <span>
+                              {sendingGas ? "Confirm tBNB in wallet..." : confirmingSend ? "Sending tBNB..." : "Deposit 0.01 tBNB Gas from MetaMask"}
+                            </span>
+                            <ArrowRight className="size-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -447,29 +571,48 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   )}
                 </div>
 
-                {needsU && isConnected && connectedAddress && (
+                {(needsU || needsGas) && isConnected && connectedAddress && (
                   <div className="mt-3 space-y-2 border-t border-border pt-3">
                     <p className="text-xs text-muted-foreground">
-                      Already have $U in your connected wallet ({truncate(connectedAddress)})?
-                      Send it straight to your hiring wallet:
+                      Transfer directly from your connected wallet ({truncate(connectedAddress)}) to your hiring wallet:
                     </p>
                     {sendError && (
                       <p className="text-xs text-destructive">{sendError}</p>
                     )}
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleSendFromConnectedWallet}
-                      disabled={sending || confirmingSend}
-                    >
-                      {(sending || confirmingSend) && <Loader2 className="animate-spin" />}
-                      {sending
-                        ? "Confirm in wallet..."
-                        : confirmingSend
-                          ? "Sending..."
-                          : `Send ${budgetLabel} from connected wallet`}
-                      {!sending && !confirmingSend && <ArrowRight className="size-3.5" />}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      {needsU && (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleSendFromConnectedWallet}
+                          disabled={sending || sendingGas || confirmingSend}
+                        >
+                          {(sending || confirmingSend) && <Loader2 className="animate-spin" />}
+                          {sending
+                            ? "Confirm $U in wallet..."
+                            : confirmingSend
+                              ? "Sending $U..."
+                              : `Send ${budgetLabel} from connected wallet`}
+                          {!sending && !confirmingSend && <ArrowRight className="size-3.5" />}
+                        </Button>
+                      )}
+                      {needsGas && (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleSendGasFromConnectedWallet}
+                          disabled={sending || sendingGas || confirmingSend}
+                        >
+                          {(sendingGas || confirmingSend) && <Loader2 className="animate-spin" />}
+                          {sendingGas
+                            ? "Confirm tBNB in wallet..."
+                            : confirmingSend
+                              ? "Sending tBNB..."
+                              : "Send 0.01 tBNB gas from connected wallet"}
+                          {!sendingGas && !confirmingSend && <ArrowRight className="size-3.5" />}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -507,11 +650,25 @@ export function HireDialog({ agent }: { agent: Agent }) {
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col gap-2 sm:flex-col">
               {session.status === "FUNDED" ? (
                 <Button onClick={() => setOpen(false)} className="w-full">
                   Done
                 </Button>
+              ) : session.status === "FAILED" ? (
+                <>
+                  <Button
+                    onClick={handleResetAndCreateFreshWallet}
+                    className="w-full"
+                    disabled={connecting}
+                  >
+                    {connecting && <Loader2 className="animate-spin" />}
+                    {connecting ? "Setting up fresh wallet..." : "Create Fresh Registered Wallet"}
+                  </Button>
+                  <Button onClick={handleRetry} className="w-full" variant="outline">
+                    Try Again
+                  </Button>
+                </>
               ) : (
                 <Button onClick={handleRetry} className="w-full">
                   Try Again

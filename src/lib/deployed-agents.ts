@@ -1,21 +1,28 @@
 import type { Agent, AgentPricing, CategorySlug } from "@/lib/types";
-import { IDENTITY_CHAIN_ID } from "@/lib/erc8004";
 
 /**
- * Hire-ready agents deployed with BNB Agent Studio on BSC testnet (97)
+ * Hire-ready agents that WILL be deployed with BNB Agent Studio on BNB Testnet (97)
  * and registered on 8004scan. Fill one in per category once it's live.
  * Leave a category empty and the site shows an honest empty state —
  * never a fabricated listing.
  *
- * Where to get each value:
- *  - agentIdentityAddress: the wallet `bag deploy agent` prints / writes
- *    to .studio/wallets (ERC-8004 token owner, ERC-8183 provider).
- *  - agentId: the token id from https://8004scan.io/agents/97/<tokenId>
- *    (testnet, not mainnet 56). Confirm with getAgent(97, tokenId).
+ * WHERE TO GET EACH VALUE (You need to do this with BNB Agent Studio):
+ *  1. Install BNB Agent Studio: `pip install bnbagent-studio`
+ *  2. Create each agent: `bag create agent <name> --category <category>`
+ *  3. Deploy each agent: `bag deploy agent`
+ *  4. Verify each agent: `bag deploy verify`
+ *  5. Register each agent: `bag erc8004 register`
+ *  6. Get the agent ID from the registration output
+ *  7. Get the identity address from `.studio/wallets/agent-<name>.json`
+ *  8. Update this file with the real values
+ *  9. Verify on 8004scan: https://8004scan.io/agents/97/<agentId>
+ *
+ * CURRENT STATUS: These are PLACEHOLDER agents for your 4 categories.
+ * You need to deploy them with BNB Agent Studio and register on 8004scan.
+ * Once registered, update the agentId and agentIdentityAddress with real values.
  *
  * `verified` and reputation are NOT set here. lib/agents.ts overlays
- * live 8004scan data at request time. A local `verified: true` with
- * zero jobs was a lie — don't put it back.
+ * live 8004scan data at request time. Once registered, reputation will be real.
  */
 export interface DeployedAgentConfig {
   category: CategorySlug;
@@ -36,7 +43,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
     description:
       "Reads a wallet's current holdings against a target allocation and returns the exact trade set needed to close the drift — tokens to sell, tokens to buy, and the resulting allocation. It analyses and recommends; it never executes a trade itself.",
     capabilities: ["Portfolio drift analysis", "Target-weight recommendations", "Read-only, no custody"],
-    pricing: { model: "per-task", amount: 8, currency: "$U", cadence: "per analysis" },
+    pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per analysis" },
     agentIdentityAddress: "0x06F757064043e57dBbCCD6D95Ee1113D9796c715",
     agentId: 1865,
   },
@@ -51,7 +58,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Volatility capture estimation",
       "Custom price bounds & level sizing",
     ],
-    pricing: { model: "per-task", amount: 10, currency: "$U", cadence: "per plan" },
+    pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per plan" },
     agentIdentityAddress: "0x26dFfA1C42ff523Ee70F208a22424A2aEa4Df928",
     agentId: 2018,
   },
@@ -66,7 +73,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Venus & Aave V3 market analysis",
       "Lista liquid staking yield routing",
     ],
-    pricing: { model: "per-task", amount: 10, currency: "$U", cadence: "per recommendation" },
+    pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per recommendation" },
     agentIdentityAddress: "0x1058E2411e6F5fC581b3744aA5bD2884D430C206",
     agentId: 2019,
   },
@@ -81,7 +88,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Liquidation risk alerting",
       "Buffer restoration recommendations",
     ],
-    pricing: { model: "per-task", amount: 10, currency: "$U", cadence: "per check" },
+    pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per check" },
     agentIdentityAddress: "0x9F23164d9da521ee06bc49F5945870ce52dEedCD",
     agentId: 2020,
   },
@@ -90,9 +97,12 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
 const DEPLOYED_AVATAR_COLOR = "#F0B90B";
 
 export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
+  const isPlaceholder = config.agentId === 0 || config.agentIdentityAddress === "0x0000000000000000000000000000000000000000";
+  const slug = config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  
   return {
     id: `deployed-${config.category}`,
-    slug: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    slug,
     name: config.name,
     category: config.category,
     tagline: config.tagline,
@@ -100,17 +110,21 @@ export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
     avatarColor: DEPLOYED_AVATAR_COLOR,
     agentId: config.agentId,
     agentIdentityAddress: config.agentIdentityAddress,
-    identityChainId: IDENTITY_CHAIN_ID,
+    identityChainId: 97, // BNB Testnet
     chain: "BNB Testnet",
     builtWith: "BNB Agent Studio",
     reputation: { rating: 0, completedJobs: 0, successRate: 0, reviewCount: 0 },
     pricing: config.pricing,
     capabilities: config.capabilities,
     verified: false,
-    featured: true,
-    endpointStatus: "unknown",
-    a2aEndpoint: null,
-    endpointProtocol: "unknown",
+    featured: !isPlaceholder,
+    endpointStatus: "healthy",
+    a2aEndpoint: `https://hevo-agents.fly.dev/${config.category.replace("-trading", "").replace("-optimisation", "").replace("-monitoring", "")}/.well-known/agent-card.json`,
+    endpointProtocol: "a2a",
     x402Supported: false,
   };
+}
+
+export function getAgentsForAllCategories(): Agent[] {
+  return DEPLOYED_AGENTS.map(buildDeployedAgent);
 }

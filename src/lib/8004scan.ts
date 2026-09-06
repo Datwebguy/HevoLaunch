@@ -31,10 +31,15 @@ import type { EndpointStatus } from "@/lib/types";
 
 const PUBLIC_BASE_URL = "https://8004scan.io/api/v1/public";
 const AUTH_BASE_URL = "https://8004scan.io/api/v1";
-const SCAN_SITE = "https://8004scan.io";
 
 export function scanAgentUrl(chainId: number, tokenId: string | number): string {
-  return `${SCAN_SITE}/agents/${chainId}/${tokenId}`;
+  if (chainId === 97) {
+    return `https://testnet.8004scan.io/agents/bsc-testnet/${tokenId}`;
+  }
+  if (chainId === 56) {
+    return `https://8004scan.io/agents/bsc/${tokenId}`;
+  }
+  return `https://testnet.8004scan.io/agents/bsc-testnet/${tokenId}`;
 }
 
 export interface ScanAgentHealth {
@@ -107,22 +112,49 @@ function apiKey(): string | undefined {
   return process.env.SCAN_8004_API_KEY;
 }
 
+const memoryCache = new Map<string, { data: unknown; expiresAt: number }>();
+
 async function fetchJson<T>(
   url: string,
   headers: Record<string, string>,
   revalidateSeconds: number
 ): Promise<T> {
-  const res = await fetch(url, {
-    headers: { Accept: "application/json", ...headers },
-    next: { revalidate: revalidateSeconds },
-    // A slow 8004scan response shouldn't stall the whole page render —
-    // fail fast and let callers fall back to an empty/cached result.
-    signal: AbortSignal.timeout(5000),
-  });
-  if (!res.ok) {
-    throw new Error(`8004scan request failed: ${res.status}`);
+  const cached = memoryCache.get(url);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data as T;
   }
-  return res.json();
+
+  const maxRetries = 2;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: "application/json", ...headers },
+        next: { revalidate: revalidateSeconds },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (!res.ok) {
+        if (attempt < maxRetries && (res.status === 429 || res.status >= 500)) {
+          await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+          continue;
+        }
+        throw new Error(`8004scan request failed: ${res.status}`);
+      }
+
+      const json = await res.json();
+      memoryCache.set(url, { data: json, expiresAt: Date.now() + revalidateSeconds * 1000 });
+      return json;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError || new Error(`8004scan request failed for ${url}`);
 }
 
 function withParams(base: string, path: string, params?: Record<string, string | number | boolean>) {

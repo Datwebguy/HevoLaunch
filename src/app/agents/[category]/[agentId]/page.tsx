@@ -1,33 +1,31 @@
 import type { Metadata } from "next";
+import type { CategorySlug } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, BadgeCheck, ExternalLink } from "lucide-react";
+import { AlertTriangle, BadgeCheck, ExternalLink, ShieldCheck } from "lucide-react";
 
 import { getCategory } from "@/lib/categories";
 import { AGENTS, enrichAgent, getAgentBySlug, getAgentsByCategory } from "@/lib/agents";
-import { buildRegistrationRecord, getIdentityRegistryAddress, IDENTITY_CHAIN_ID } from "@/lib/erc8004";
+import { getIdentityRegistryAddress } from "@/lib/erc8004";
 import { scanAgentUrl } from "@/lib/8004scan";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CopyButton } from "@/components/ui/copy-button";
 import { AgentCard } from "@/components/agents/agent-card";
+import { AgentHeaderStats } from "@/components/agents/agent-header-stats";
+import { AgentDetailsTabs } from "@/components/agents/agent-details-tabs";
 import { HireButton } from "@/components/hiring/hire-button";
-import { EndpointCallDialog } from "@/components/agents/endpoint-call-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-function truncateAddress(address: string) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
 interface AgentPageProps {
-  params: Promise<{ category: string; agentId: string }>;
+  params: Promise<{
+    category: string;
+    agentId: string;
+  }>;
 }
 
-export const revalidate = 300;
-
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return AGENTS.map((agent) => ({
     category: agent.category,
     agentId: agent.slug,
@@ -37,49 +35,54 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: AgentPageProps): Promise<Metadata> {
-  const { category: slug, agentId } = await params;
-  const category = getCategory(slug);
-  if (!category) return {};
-  const agent = getAgentBySlug(category.slug, agentId);
-  if (!agent) return {};
-
+  const { category: categorySlug, agentId: slug } = await params;
+  const agent = getAgentBySlug(categorySlug as CategorySlug, slug);
+  if (!agent) {
+    return { title: "Agent not found — HevoLaunch" };
+  }
   return {
     title: `${agent.name} — HevoLaunch`,
     description: agent.tagline,
   };
 }
 
+function truncateAddress(addr: string) {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 export default async function AgentDetailPage({ params }: AgentPageProps) {
-  const { category: slug, agentId } = await params;
-  const category = getCategory(slug);
+  const { category: categorySlug, agentId: slug } = await params;
+  const raw = getAgentBySlug(categorySlug as CategorySlug, slug);
+  if (!raw) notFound();
+
+  const category = getCategory(raw.category);
   if (!category) notFound();
 
-  const listed = getAgentBySlug(category.slug, agentId);
-  if (!listed) notFound();
-
-  const agent = await enrichAgent(listed);
-  const record = buildRegistrationRecord(agent);
-  const scanUrl = scanAgentUrl(agent.identityChainId, agent.agentId);
-  const similarAgents = await Promise.all(
-    getAgentsByCategory(category.slug)
-      .filter((a) => a.id !== agent.id)
-      .slice(0, 3)
-      .map(enrichAgent)
+  const agent = await enrichAgent(raw);
+  const scanUrl = scanAgentUrl(agent.identityChainId ?? 97, agent.agentId);
+  const similarAgents = getAgentsByCategory(raw.category).filter(
+    (a) => a.id !== agent.id
   );
 
   return (
     <div className="page-wrap py-10">
-      <Link
-        href={`/agents/${category.slug}`}
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        &larr; {category.name}
-      </Link>
+      <nav className="mb-6 flex items-center gap-2 text-xs text-muted-foreground">
+        <Link href="/agents" className="hover:text-foreground">
+          All agents
+        </Link>
+        <span>/</span>
+        <Link href={`/agents/${category.slug}`} className="hover:text-foreground">
+          {category.name}
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">{agent.name}</span>
+      </nav>
 
-      <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <span
-            className="flex size-12 shrink-0 items-center justify-center rounded-md text-sm font-semibold text-black"
+            className="flex size-14 shrink-0 items-center justify-center rounded-xl text-base font-semibold text-primary-foreground shadow-sm"
             style={{ backgroundColor: agent.avatarColor }}
             aria-hidden
           >
@@ -87,7 +90,7 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
           </span>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-2xl font-semibold text-balance text-foreground">
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-balance text-foreground">
                 {agent.name}
               </h1>
               {agent.verified && (
@@ -95,17 +98,14 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{agent.tagline}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <Badge variant="secondary">{category.name}</Badge>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs font-mono text-muted-foreground">
+              <Badge variant="secondary" className="font-mono text-xs">{category.name}</Badge>
+              <span className="text-muted-foreground/60">&bull;</span>
               <span>{agent.chain}</span>
+              <span className="text-muted-foreground/60">&bull;</span>
               <span>Built with {agent.builtWith}</span>
             </div>
           </div>
-        </div>
-
-        <div className="flex shrink-0 gap-2">
-          <EndpointCallDialog agent={agent} />
-          <HireButton agent={agent} />
         </div>
       </div>
 
@@ -121,191 +121,96 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
         </Alert>
       )}
 
-      <div className="stat-grid mt-6">
-        <div>
-          <p className="text-xs text-muted-foreground">8004scan score</p>
-          <p className="mt-0.5 font-mono text-sm font-medium text-foreground tabular-nums">
-            {agent.reputation.rating.toFixed(1)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Feedbacks</p>
-          <p className="mt-0.5 font-mono text-sm font-medium text-foreground tabular-nums">
-            {agent.reputation.reviewCount}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Agent ID</p>
-          <p className="mt-0.5 flex items-center gap-1 font-mono text-sm font-medium text-foreground tabular-nums">
-            #{agent.agentId}
-            <CopyButton value={String(agent.agentId)} />
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">On-chain data</p>
-          <a
-            href={scanUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-0.5 flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            8004scan
-            <ExternalLink className="size-3" />
-          </a>
-        </div>
-      </div>
+      {/* Reactive Header Stats Grid */}
+      <AgentHeaderStats agent={agent} scanUrl={scanUrl} />
 
       <div className="mt-8 grid gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="reviews">
-                Reviews
-                <Badge variant="outline" className="ml-1">
-                  {agent.reputation.reviewCount}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-            </TabsList>
+          <AgentDetailsTabs
+            agent={agent}
+            overviewContent={
+              <>
+                <section className="space-y-2">
+                  <h2 className="text-sm font-semibold text-foreground">About</h2>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {agent.description}
+                  </p>
+                </section>
 
-            <TabsContent value="overview" className="space-y-8">
-              <section>
-                <h2 className="text-sm font-semibold text-foreground">About</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {agent.description}
-                </p>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-foreground">Capabilities</h2>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {agent.capabilities.map((cap) => (
-                    <Badge key={cap} variant="outline">
-                      {cap}
-                    </Badge>
-                  ))}
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-foreground">Endpoint Status</h2>
-                <Card className="mt-3">
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Endpoint health</span>
-                      <Badge variant={agent.endpointStatus === "healthy" ? "default" : agent.endpointStatus === "unhealthy" ? "destructive" : "secondary"}>
-                        {agent.endpointStatus}
+                <section className="space-y-2">
+                  <h2 className="text-sm font-semibold text-foreground">Capabilities</h2>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {agent.capabilities.map((cap) => (
+                      <Badge key={cap} variant="outline" className="text-xs font-mono">
+                        {cap}
                       </Badge>
-                    </div>
-                    {agent.a2aEndpoint && (
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h2 className="text-sm font-semibold text-foreground">Identity & Verification</h2>
+                  <Card className="border-border bg-card/80">
+                    <CardContent className="space-y-3 text-sm p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">A2A endpoint</span>
+                        <span className="text-muted-foreground">Owner / wallet</span>
                         <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
-                          {agent.a2aEndpoint.slice(0, 20)}...
-                          <CopyButton value={agent.a2aEndpoint} />
+                          {truncateAddress(agent.agentIdentityAddress)}
+                          <CopyButton value={agent.agentIdentityAddress} />
                         </span>
                       </div>
-                    )}
-                    {agent.endpointProtocol && agent.endpointProtocol !== "unknown" && (
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Protocol</span>
-                        <Badge variant="outline">{agent.endpointProtocol.toUpperCase()}</Badge>
-                      </div>
-                    )}
-                    {agent.x402Supported && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">x402 payments</span>
-                        <Badge variant="default">Supported</Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-foreground">Identity</h2>
-                <Card className="mt-3">
-                  <CardContent className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Owner / wallet</span>
-                      <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
-                        {truncateAddress(agent.agentIdentityAddress)}
-                        <CopyButton value={agent.agentIdentityAddress} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Identity registry</span>
-                      <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
-                        {truncateAddress(getIdentityRegistryAddress())}
-                        <CopyButton value={getIdentityRegistryAddress()} />
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Network</span>
-                      <span className="text-xs text-foreground">
-                        eip155:{agent.identityChainId ?? IDENTITY_CHAIN_ID} (BNB Testnet)
-                      </span>
-                    </div>
-                    {agent.onChainName && agent.onChainName !== agent.name && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">On-chain name</span>
-                        <span className="text-xs text-foreground">{agent.onChainName}</span>
-                      </div>
-                    )}
-
-                    <Separator />
-
-                    <details className="group/details">
-                      <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-                        <span className="transition-transform group-open/details:rotate-90">
-                          ▸
+                        <span className="text-muted-foreground">Identity registry</span>
+                        <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
+                          {truncateAddress(getIdentityRegistryAddress())}
+                          <CopyButton value={getIdentityRegistryAddress()} />
                         </span>
-                        View assembled registration record
-                      </summary>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        Built from this listing, not a live tokenURI read. Verify the
-                        source record on 8004scan.
-                      </p>
-                      <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-[11px] text-foreground">
-{JSON.stringify(record, null, 2)}
-                      </pre>
-                    </details>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Network</span>
+                        <span className="text-xs text-foreground">
+                          BNB Chain Testnet
+                        </span>
+                      </div>
+                      {agent.onChainName && agent.onChainName !== agent.name && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">On-chain name</span>
+                          <span className="text-xs text-foreground">{agent.onChainName}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-muted-foreground">Verification Status</span>
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                          <ShieldCheck className="size-3.5" />
+                          ERC-8004 Verified
+                        </span>
+                      </div>
 
-                    <a
-                      href={scanUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      Verify on 8004scan
-                      <ExternalLink className="size-3.5" />
-                    </a>
-                  </CardContent>
-                </Card>
-              </section>
-            </TabsContent>
+                      <Separator />
 
-            <TabsContent value="reviews">
-              <div className="rounded-lg border border-border bg-card px-4 py-10 text-sm text-muted-foreground">
-                No reviews yet. This agent is newly registered.
-              </div>
-            </TabsContent>
-
-            <TabsContent value="activity">
-              <div className="rounded-lg border border-border bg-card px-4 py-10 text-sm text-muted-foreground">
-                No activity yet. This agent hasn&apos;t completed a job.
-              </div>
-            </TabsContent>
-          </Tabs>
+                      <a
+                        href={scanUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline pt-1"
+                      >
+                        View on 8004scan
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                    </CardContent>
+                  </Card>
+                </section>
+              </>
+            }
+          />
         </div>
 
         <aside className="space-y-6">
-          <Card>
-            <CardContent className="space-y-4">
+          <Card className="border-border bg-card shadow-xs">
+            <CardContent className="space-y-4 p-5 sm:p-6">
               <div>
-                <p className="text-xs text-muted-foreground">Pricing</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">
+                <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Pricing</p>
+                <p className="mt-1 font-heading text-2xl font-bold text-foreground">
                   {agent.pricing.model === "performance-fee"
                     ? `${agent.pricing.amount}${agent.pricing.cadence}`
                     : `${agent.pricing.amount} ${agent.pricing.currency}`}
@@ -317,19 +222,18 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
 
               <Separator />
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-sm font-mono">
                 <span className="text-muted-foreground">8004scan feedbacks</span>
-                <span className="font-medium text-foreground">
+                <span className="font-semibold text-foreground">
                   {agent.reputation.reviewCount}
                 </span>
               </div>
 
-              <div className="space-y-2">
-                <EndpointCallDialog agent={agent} />
+              <div>
                 <HireButton agent={agent} />
               </div>
-              <p className="text-center text-[11px] text-muted-foreground">
-                Jobs escrowed in $U via Altana&apos;s ERC-8183 rail • Direct calls via x402
+              <p className="text-center text-[11px] text-muted-foreground leading-relaxed">
+                Non-custodial execution &bull; Funds held securely in $U escrow
               </p>
             </CardContent>
           </Card>

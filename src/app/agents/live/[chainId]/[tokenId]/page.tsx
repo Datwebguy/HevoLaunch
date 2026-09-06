@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, ExternalLink, Radio } from "lucide-react";
 
-import { getAgent } from "@/lib/8004scan";
+import { getAgent, scanAgentUrl } from "@/lib/8004scan";
 import { relativeTimeFrom } from "@/lib/live-agents";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,7 +54,7 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
     notFound();
   }
 
-  const scanUrl = `https://8004scan.io/agents/${chainId}/${tokenId}`;
+  const scanUrl = scanAgentUrl(numericChainId, tokenId);
 
   return (
     <div className="page-wrap py-10">
@@ -186,7 +186,7 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Network</span>
                   <span className="text-xs text-foreground">
-                    eip155:{agent.chain_id} ({agent.is_testnet ? "BNB Testnet" : "BNB Mainnet"})
+                    {agent.is_testnet ? "BNB Chain Testnet" : "BNB Smart Chain"}
                   </span>
                 </div>
               </CardContent>

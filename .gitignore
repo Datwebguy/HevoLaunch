@@ -41,6 +41,10 @@ yarn-error.log*
 next-env.d.ts
 
 # internal working docs, not for the public repo
+.zed/
+hevo-agents/
+agent-runtime/
+fly.io.toml
 AGENTS.md
 CLAUDE.md
 hackathon.md

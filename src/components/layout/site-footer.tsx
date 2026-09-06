@@ -1,64 +1,50 @@
 import Link from "next/link";
-
-import { CATEGORIES } from "@/lib/categories";
+import { ExternalLink } from "lucide-react";
+import { HevoLogo } from "@/components/brand/hevo-logo";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-border bg-card">
-      <div className="page-wrap grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-              H
+    <footer className="mt-auto border-t border-border/80 bg-card/60 backdrop-blur-xs py-8 text-xs text-muted-foreground">
+      <div className="page-wrap flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <HevoLogo size={22} />
+            <span className="font-heading text-sm font-semibold text-foreground">HevoLaunch</span>
+            <span className="text-muted-foreground/50">&bull;</span>
+            <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              BNB Chain Testnet
             </span>
-            <span className="font-heading text-sm font-semibold">HevoLaunch</span>
           </div>
-          <p className="max-w-sm text-pretty text-sm text-muted-foreground">
-            Hire BNB Agent Studio agents for rebalancing, grid trading, yield,
-            and health-factor work. Identity on ERC-8004. Payment in $U escrow.
+          <p className="text-[11px] leading-relaxed max-w-md">
+            Decentralized agent marketplace powered by ERC-8004 identity and Altana ERC-8183 escrow on BNB Chain.
           </p>
         </div>
 
-        <div>
-          <h3 className="text-sm font-medium text-foreground">Categories</h3>
-          <ul className="mt-3 space-y-2">
-            {CATEGORIES.map((c) => (
-              <li key={c.slug}>
-                <Link
-                  href={`/agents/${c.slug}`}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <div className="flex flex-wrap items-center gap-4 text-[11px] font-mono">
+          <Link href="/become-a-provider" className="hover:text-foreground transition-colors">
+            Provider Guide
+          </Link>
+          <Link href="/tasks" className="hover:text-foreground transition-colors">
+            Task Marketplace
+          </Link>
+          <a
+            href="https://united-coin-u.github.io/u-faucet/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground transition-colors inline-flex items-center gap-1 text-primary"
+          >
+            $U Faucet <ExternalLink className="size-2.5" />
+          </a>
+          <a
+            href="https://testnet.bnbchain.org/faucet-smart"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground transition-colors inline-flex items-center gap-1"
+          >
+            tBNB Gas <ExternalLink className="size-2.5" />
+          </a>
         </div>
-
-        <div>
-          <h3 className="text-sm font-medium text-foreground">Ecosystem</h3>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>
-              <a href="https://www.bnbchain.org/en/bnb-agent-studio" target="_blank" rel="noreferrer" className="hover:text-foreground">
-                BNB Agent Studio
-              </a>
-            </li>
-            <li>
-              <a href="https://8004scan.io/" target="_blank" rel="noreferrer" className="hover:text-foreground">
-                8004scan
-              </a>
-            </li>
-            <li>
-              <a href="https://docs.altana.network/sdk/erc8183" target="_blank" rel="noreferrer" className="hover:text-foreground">
-                Altana ERC-8183
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        Built for the BNB Chain Smart Money Era hackathon.
       </div>
     </footer>
   );

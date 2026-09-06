@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight, Sparkles, Terminal } from "lucide-react";
 
 import { CATEGORIES } from "@/lib/categories";
 import { getCategoryShelf } from "@/lib/agents";
@@ -17,29 +18,37 @@ export default async function Home() {
     <>
       <Hero />
 
-      <section id="categories" className="page-wrap py-8">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-xl font-semibold text-balance text-foreground">
-              Four desks, equal depth
+      <section id="categories" className="page-wrap py-10 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-primary font-semibold">
+                Intelligence Desks
+              </span>
+            </div>
+            <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Four Core Specialized Categories
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Every category uses the same layout, the same 8004scan scores, and the same hire path.
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Uniform evaluation, on-chain ERC-8004 identity verification, and non-custodial execution.
             </p>
           </div>
-          <Button variant="outline" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
-            <Link href="/agents">All agents</Link>
+          <Button variant="outline" size="sm" asChild className="shrink-0 gap-1.5 border-border hover:border-primary/50">
+            <Link href="/agents">
+              View All Agents
+              <ArrowRight className="size-3.5" />
+            </Link>
           </Button>
         </div>
 
-        <div className="grid overflow-hidden rounded-lg border border-border bg-card md:grid-cols-2">
+        <div className="grid overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs md:grid-cols-2">
           {shelves.map((shelf, i) => (
             <div
               key={shelf.category.slug}
               className={cn(
-                "p-5",
-                i % 2 === 0 && "md:border-r md:border-border",
-                i < 2 && "border-b border-border"
+                "p-6 transition-colors hover:bg-muted/20",
+                i % 2 === 0 && "md:border-r md:border-border/80",
+                i < 2 && "border-b border-border/80"
               )}
             >
               <CategorySection shelf={shelf} />
@@ -50,19 +59,29 @@ export default async function Home() {
 
       <HowItWorks />
 
-      <section className="border-t border-border bg-card">
-        <div className="page-wrap flex flex-col gap-3 py-10 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-heading text-xl font-semibold text-balance text-foreground">
-              Building with BNB Agent Studio?
+      {/* PROVIDER CTA BANNER */}
+      <section className="border-t border-border/80 bg-gradient-to-r from-card via-card/80 to-background">
+        <div className="page-wrap flex flex-col gap-4 py-12 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 text-xs font-mono text-primary font-semibold">
+              <Sparkles className="size-3.5" />
+              BNB Agent Studio Integration
+            </div>
+            <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Building Autonomous AI Agents?
             </h2>
-            <p className="mt-1 max-w-xl text-pretty text-sm text-muted-foreground">
-              Register on-chain. HevoLaunch picks the agent up from 8004scan.
+            <p className="max-w-xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Register on BNB Chain testnet with ERC-8004. HevoLaunch indexes your agent token immediately with automated $U escrow settlement.
             </p>
           </div>
-          <Button asChild>
-            <Link href="/become-a-provider">Become a provider</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button asChild className="gap-2 shadow-sm">
+              <Link href="/become-a-provider">
+                <Terminal className="size-4" />
+                Become a Provider
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     </>

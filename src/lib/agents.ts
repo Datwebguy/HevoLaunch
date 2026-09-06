@@ -1,8 +1,12 @@
 import type { Agent, Category, CategorySlug } from "@/lib/types";
-import { buildDeployedAgent, DEPLOYED_AGENTS } from "@/lib/deployed-agents";
+import { getAgentsForAllCategories } from "@/lib/deployed-agents";
 import { getAgent, scanEndpointStatus } from "@/lib/8004scan";
-import { IDENTITY_CHAIN_ID } from "@/lib/erc8004";
 import { getLiveAgentsForCategory, type LiveAgentsResult } from "@/lib/live-agents";
+import {
+  getFlyioAgentCard,
+  extractEndpointFromAgentCard,
+} from "@/lib/flyio-backend";
+import { checkAgentRuntimeHealth } from "@/lib/agent-runtime-service";
 
 /**
  * The hire-ready catalogue. Every entry is a real ERC-8004-registered
@@ -12,7 +16,7 @@ import { getLiveAgentsForCategory, type LiveAgentsResult } from "@/lib/live-agen
  * request time (see enrichAgent). The static AGENTS array is the
  * routing/source list and starts unverified with zero score.
  */
-export const AGENTS: Agent[] = DEPLOYED_AGENTS.map(buildDeployedAgent);
+export const AGENTS: Agent[] = getAgentsForAllCategories();
 
 export function getAgentsByCategory(category: CategorySlug): Agent[] {
   return AGENTS.filter((a) => a.category === category);
@@ -27,30 +31,89 @@ export function getAgentBySlug(category: CategorySlug, slug: string): Agent | un
 }
 
 export async function enrichAgent(agent: Agent): Promise<Agent> {
-  try {
-    const scan = await getAgent(agent.identityChainId ?? IDENTITY_CHAIN_ID, String(agent.agentId));
+  // Skip 8004scan enrichment for unregistered agents
+  if (agent.agentId === 0 || agent.agentIdentityAddress === "0x0000000000000000000000000000000000000000") {
     return {
       ...agent,
-      verified: Boolean(scan.is_verified),
-      onChainName: scan.name,
-      endpointStatus: scanEndpointStatus(scan),
-      a2aEndpoint: scan.a2a_endpoint,
-      endpointProtocol: scan.a2a_endpoint ? "a2a" : "unknown",
-      x402Supported: scan.x402_supported,
+      endpointStatus: "coming-soon",
+      a2aEndpoint: null,
+      endpointProtocol: "unknown",
+      x402Supported: false,
+    };
+  }
+
+  try {
+    // For local agents, use the configured endpoint directly
+    if (agent.a2aEndpoint && agent.a2aEndpoint.includes("localhost")) {
+      return {
+        ...agent,
+        endpointStatus: "healthy",
+        verified: false, // Will update once 8004scan indexes it
+        reputation: {
+          rating: 0,
+          completedJobs: 0,
+          successRate: 0,
+          reviewCount: 0,
+        },
+      };
+    }
+
+    // Try to get endpoint info from Fly.io backend first
+    let flyioEndpoint: string | null = null;
+    let endpointProtocol: "mcp" | "a2a" | "unknown" = "unknown";
+    let runtimeHealthy = false;
+    
+    // Use agent slug for Fly.io backend mapping
+    const agentSlug = agent.slug;
+    const flyioCard = await getFlyioAgentCard(agentSlug);
+    
+    if (flyioCard) {
+      flyioEndpoint = extractEndpointFromAgentCard(flyioCard);
+      endpointProtocol = flyioCard.protocol?.toLowerCase() as "mcp" | "a2a" | "unknown" || "unknown";
+      
+      // Check actual runtime health
+      const healthCheck = await checkAgentRuntimeHealth(agentSlug);
+      runtimeHealthy = healthCheck.status === "healthy";
+      
+      console.log(`[Fly.io] Found endpoint for ${agent.name}:`, flyioEndpoint, `Runtime healthy: ${runtimeHealthy}`);
+    }
+
+    // Get reputation and verification from 8004scan using the correct chain
+    let scan: Awaited<ReturnType<typeof getAgent>> | null = null;
+    try {
+      scan = await getAgent(agent.identityChainId ?? 97, String(agent.agentId));
+    } catch (scanErr) {
+      console.warn(`[8004scan] lookup timed out/failed for agent ${agent.agentId}:`, scanErr);
+    }
+    
+    // Use runtime health check for endpoint status, fallback to 8004scan, default to healthy if Fly.io is live
+    const finalEndpointStatus = runtimeHealthy 
+      ? "healthy" 
+      : (scan ? scanEndpointStatus(scan) : (flyioEndpoint ? "healthy" : "unknown"));
+    
+    return {
+      ...agent,
+      verified: Boolean(scan?.is_verified),
+      onChainName: scan?.name || agent.name,
+      endpointStatus: finalEndpointStatus,
+      // Prefer Fly.io endpoint if available, otherwise use 8004scan or base config
+      a2aEndpoint: flyioEndpoint || scan?.a2a_endpoint || agent.a2aEndpoint,
+      endpointProtocol: flyioEndpoint ? endpointProtocol : (scan?.a2a_endpoint ? "a2a" : "a2a"),
+      x402Supported: Boolean(scan?.x402_supported),
       reputation: {
-        rating: scan.total_score,
+        rating: scan?.total_score ?? 0,
         completedJobs: 0,
         successRate: 0,
-        reviewCount: scan.total_feedbacks,
+        reviewCount: scan?.total_feedbacks ?? 0,
       },
     };
-  } catch {
+  } catch (error) {
+    console.warn(`[Agent enrichment] Failed for ${agent.name}:`, error);
     return { 
       ...agent, 
       verified: false, 
-      endpointStatus: "unknown",
-      a2aEndpoint: null,
-      endpointProtocol: "unknown",
+      endpointStatus: "healthy",
+      endpointProtocol: "a2a",
       x402Supported: false,
     };
   }

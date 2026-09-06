@@ -6,14 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo 'ESLint temporarily disabled due to hanging issue'",
-    "lint:fix": "echo 'ESLint temporarily disabled due to hanging issue'",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@altananetwork/sdk": "^0.8.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/outfit": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@fontsource-variable/syne": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@tanstack/react-query": "^5.101.4",

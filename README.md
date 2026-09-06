@@ -33,10 +33,10 @@ Without the key, 8004scan public API is used (10 req/min). Never prefix this wit
 ## Hire (testnet)
 
 1. Open any of the 4 flagship hire-ready agents:
-   - **Hevo Rebalance** (Rebalancing, Token ID: 1865)
-   - **Hevo Grid** (Grid Trading, Token ID: 2018)
-   - **Hevo Yield** (Yield Optimisation, Token ID: 2019)
-   - **Hevo Sentinel** (Health Factor Monitoring, Token ID: 2020)
+   - **Hevo Rebalance** (Rebalancing, Token ID: 0 - placeholder)
+   - **Hevo Grid** (Grid Trading, Token ID: 0 - placeholder)
+   - **Hevo Yield** (Yield Optimisation, Token ID: 0 - placeholder)
+   - **Hevo Sentinel** (Health Factor Monitoring, Token ID: 0 - placeholder)
 2. Create the Altana passkey hiring wallet.
 3. Fund that address with testnet `$U` and a little tBNB for gas.
    - `$U`: https://united-coin-u.github.io/u-faucet/
@@ -47,7 +47,9 @@ The header **Connect Wallet** is optional. It must be on **BNB Testnet**. It is 
 
 ## Catalogue
 
-Hire-ready listings live in `src/lib/deployed-agents.ts`. All 4 categories have live, ERC-8004 registered agents on BSC testnet (`https://8004scan.io/agents/97/<tokenId>`). Reputation and the verified badge are overlaid dynamically from 8004scan at request time. Backend runtimes are hosted on Fly.io (`https://hevo-agents.fly.dev`).
+Hire-ready listings live in `src/lib/deployed-agents.ts`. Currently contains placeholder agents for your 4 categories that need to be deployed with BNB Agent Studio and registered on 8004scan. See `AGENT_DEPLOYMENT_GUIDE.md` for detailed deployment instructions.
+
+The marketplace also supports live agent discovery from 8004scan for categories where you don't have your own agents deployed, enabling real agent discovery on the platform.
 
 ## Stack
 

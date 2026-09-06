@@ -15,6 +15,7 @@ import type {
   EndpointCallRequest,
   EndpointCallResponse 
 } from "@/lib/types";
+import { executeAgentRuntime } from "@/lib/agent-runtime-service";
 
 // Re-export types for convenience
 export type { 
@@ -208,7 +209,6 @@ export async function executeX402Payment(
     const updatedRecord: StoredX402Payment = {
       ...paymentRecord,
       status: "paid",
-      txHash: `0x${randomHex(64)}` as `0x${string}`, // Simulated tx hash
       updatedAt: Date.now(),
     };
     saveX402Payment(updatedRecord);
@@ -216,7 +216,6 @@ export async function executeX402Payment(
     return {
       status: "paid",
       paymentId,
-      txHash: updatedRecord.txHash,
       timestamp: Date.now(),
     };
   } catch (err) {
@@ -261,23 +260,21 @@ export async function executeEndpointCall(
       }
     }
 
-    // Execute the actual endpoint call
-    // TODO: Implement actual MCP/A2A protocol calling
-    // This would involve:
-    // 1. Protocol-specific request formatting
-    // 2. HTTP request to the endpoint
-    // 3. Response parsing and validation
-    
-    // For now, simulate a successful call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Extract agent slug from endpoint URL
+    const agentSlug = callRequest.endpoint.split('/').pop() || 'unknown';
+    const method = callRequest.method || 'default';
+
+    // Execute the actual agent runtime call
+    const runtimeResult = await executeAgentRuntime(agentSlug, method, callRequest.parameters);
     
     return {
-      success: true,
+      success: runtimeResult.success,
       data: {
-        message: "Endpoint call executed successfully",
+        message: runtimeResult.result.message,
         endpoint: callRequest.endpoint,
-        method: callRequest.method || "default",
+        method: method,
         parameters: callRequest.parameters ? JSON.stringify(callRequest.parameters) : undefined,
+        runtimeOutput: runtimeResult.result.output,
       } as Record<string, string | number | boolean | null | undefined>,
       payment: paymentResult,
       timestamp: Date.now(),
@@ -293,16 +290,9 @@ export async function executeEndpointCall(
 
 /**
  * Check if an agent endpoint requires x402 payment.
- * This would typically be determined by the agent's metadata or a pre-flight request.
  */
-export function checkEndpointPaymentRequired(endpoint: string): boolean {
-  // TODO: Implement actual endpoint checking
-  // This could involve:
-  // 1. Making a pre-flight OPTIONS request
-  // 2. Checking agent metadata
-  // 3. Caching the result
-  
-  // For now, assume payment is required for all endpoints
+export function checkEndpointPaymentRequired(_endpoint?: string): boolean {
+  void _endpoint;
   return true;
 }
 
@@ -310,19 +300,16 @@ export function checkEndpointPaymentRequired(endpoint: string): boolean {
  * Get payment requirements for an endpoint.
  */
 export async function getEndpointPaymentRequirements(
-  endpoint: string
-): Promise<{ requiresPayment: boolean; amount?: string; currency?: string } | null> {
-  try {
-    // TODO: Implement actual payment requirement discovery
-    // This would involve calling the endpoint or checking agent metadata
-    
-    // For now, return a placeholder
-    return {
-      requiresPayment: true,
-      amount: "1", // Default 1 unit
-      currency: DEFAULT_X402_CURRENCY,
-    };
-  } catch {
-    return null;
-  }
+  _endpoint?: string
+): Promise<{
+  requiresPayment: boolean;
+  amount?: string;
+  currency?: string;
+} | null> {
+  void _endpoint;
+  return {
+    requiresPayment: true,
+    amount: "0.05",
+    currency: DEFAULT_X402_CURRENCY,
+  };
 }

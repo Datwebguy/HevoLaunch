@@ -1,17 +1,14 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
+import { getStoredHiringWallet } from "@/lib/altana";
 import type { HireSession } from "@/lib/types";
 
 /**
- * Client-only session store, keyed to this browser's Altana hiring wallet
- * (see lib/altana.ts — one passkey wallet per browser). There's no backend
- * yet, so sessions live in localStorage — enough to demo the full
- * Hire -> Fund -> Status loop end to end. Swapping this for a real index
- * (reading jobs by `client` address straight from the ERC-8183 kernel via
- * `getErc8183Job`) is a self-contained change; nothing outside this file
- * needs to know the storage is local.
+ * Client session store with account scoping. Sessions live in localStorage
+ * and are associated with both the passkey smart account (`hirerAddress`)
+ * and any connected EOA wallet (`connectedAddress`).
  */
 
 const STORAGE_KEY = "hevolaunch:hire-sessions";
@@ -55,6 +52,35 @@ export function saveSession(session: HireSession) {
   writeAll(all);
 }
 
+export function deleteSession(id: string) {
+  const all = getAll().filter((s) => s.id !== id);
+  writeAll(all);
+}
+
+export function clearAllSessions() {
+  writeAll([]);
+}
+
+export function clearFailedSessions(account?: string) {
+  const normalized = account?.toLowerCase();
+  const all = getAll().filter((s) => {
+    // If account specified, only clear failed/unfunded for that account
+    if (normalized) {
+      const matchesAccount =
+        s.connectedAddress?.toLowerCase() === normalized ||
+        s.hirerAddress?.toLowerCase() === normalized ||
+        s.task?.toLowerCase().includes(normalized);
+      if (matchesAccount && (s.status === "FAILED" || s.status === "UNFUNDED")) {
+        return false;
+      }
+      return true;
+    }
+    // Otherwise clear all failed/unfunded
+    return s.status !== "FAILED" && s.status !== "UNFUNDED";
+  });
+  writeAll(all);
+}
+
 function subscribe(callback: () => void) {
   window.addEventListener(CHANGE_EVENT, callback);
   window.addEventListener("storage", callback);
@@ -68,7 +94,38 @@ function getServerSnapshot(): HireSession[] {
   return EMPTY;
 }
 
-/** Every hire session created from this browser, newest first. */
-export function useHireSessions(): HireSession[] {
+/**
+ * Hire sessions created from this browser, newest first.
+ * If `account` is specified, filters by matching `connectedAddress`, `hirerAddress`,
+ * or the linked Altana smart account.
+ */
+export function useHireSessions(account?: string): HireSession[] {
+  const all = useSyncExternalStore(subscribe, getAll, getServerSnapshot);
+  return useMemo(() => {
+    if (!account) return all;
+    const normalized = account.toLowerCase();
+    const storedHiringWallet = getStoredHiringWallet(account)?.address?.toLowerCase();
+    const defaultHiringWallet = getStoredHiringWallet()?.address?.toLowerCase();
+
+    return all.filter((s) => {
+      // Direct connectedAddress match
+      if (s.connectedAddress?.toLowerCase() === normalized) return true;
+      // Direct hirerAddress match
+      if (s.hirerAddress?.toLowerCase() === normalized) return true;
+      // Stored smart account for this EOA matches
+      if (storedHiringWallet && s.hirerAddress?.toLowerCase() === storedHiringWallet) return true;
+      // Task prompt explicitly contained this address
+      if (s.task?.toLowerCase().includes(normalized)) return true;
+      // Legacy unassigned session matching default hiring smart account
+      if (!s.connectedAddress && defaultHiringWallet && s.hirerAddress?.toLowerCase() === defaultHiringWallet) {
+        return true;
+      }
+      return false;
+    });
+  }, [all, account]);
+}
+
+/** All hire sessions across all accounts on this browser. */
+export function useAllHireSessions(): HireSession[] {
   return useSyncExternalStore(subscribe, getAll, getServerSnapshot);
 }

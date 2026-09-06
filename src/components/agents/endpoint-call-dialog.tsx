@@ -14,7 +14,6 @@ import type { Agent } from "@/lib/types";
 import {
   executeEndpointCall,
   createX402PaymentRequest,
-  generatePaymentId,
   getEndpointPaymentRequirements,
   type EndpointCallRequest,
   type EndpointCallResponse,
@@ -34,6 +33,8 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
+import { slugToBackendEndpoint } from "@/lib/flyio-backend";
+
 type CallStage = "setup" | "payment" | "calling" | "result";
 
 export function EndpointCallDialog({ agent }: { agent: Agent }) {
@@ -47,16 +48,17 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const canCallDirectly = agent.a2aEndpoint && agent.endpointStatus !== "unhealthy";
+  const targetEndpoint = agent.a2aEndpoint || `https://hevo-agents.fly.dev/${slugToBackendEndpoint(agent.slug)}`;
+  const canCallDirectly = Boolean(targetEndpoint) && agent.endpointStatus !== "unhealthy";
 
   async function handleCheckRequirements() {
-    if (!agent.a2aEndpoint) return;
+    if (!targetEndpoint) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const requirements = await getEndpointPaymentRequirements(agent.a2aEndpoint);
+      const requirements = await getEndpointPaymentRequirements(targetEndpoint);
       if (requirements) {
         setPaymentRequired(requirements.requiresPayment);
         setPaymentAmount(requirements.amount || "1");
@@ -72,7 +74,7 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
   }
 
   async function handleCall() {
-    if (!agent.a2aEndpoint) return;
+    if (!targetEndpoint) return;
     
     setLoading(true);
     setError(null);
@@ -96,13 +98,13 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
       }
 
       const callRequest: EndpointCallRequest = {
-        endpoint: agent.a2aEndpoint,
+        endpoint: targetEndpoint,
         method: method || undefined,
         parameters: parsedParams,
         requiresPayment: paymentRequired,
         payment: paymentRequired
           ? createX402PaymentRequest(
-              agent.a2aEndpoint,
+              targetEndpoint,
               paymentAmount,
               agent.agentIdentityAddress,
               "$U",
@@ -219,11 +221,15 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
                   <Textarea
                     value={parameters}
                     onChange={(e) => setParameters(e.target.value)}
-                    placeholder='{"portfolio": "0x...", "target_allocation": {...}}'
-                    rows={4}
+                    placeholder='{"key": "value"}'
                     className="font-mono text-xs"
+                    rows={4}
                   />
                 </div>
+
+                {error && (
+                  <p className="text-xs text-destructive">{error}</p>
+                )}
 
                 {agent.x402Supported && (
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3">
