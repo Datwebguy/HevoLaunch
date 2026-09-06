@@ -163,6 +163,37 @@ export async function createOrLoadHiringWallet(account?: string): Promise<Create
   return createFreshHiringWallet(account);
 }
 
+function formatPasskeyError(err: unknown, action: "create" | "recover"): string {
+  if (!err) return "Passkey operation was not completed.";
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+
+  if (
+    lower.includes("notallowederror") ||
+    lower.includes("cancelled") ||
+    lower.includes("canceled") ||
+    lower.includes("timed out") ||
+    lower.includes("abort")
+  ) {
+    return "Passkey prompt was cancelled or timed out. Please try again.";
+  }
+  if (
+    lower.includes("no passkey") ||
+    lower.includes("not found") ||
+    lower.includes("no keys registered") ||
+    lower.includes("unknown account")
+  ) {
+    return "No existing passkey for HevoLaunch was found on this device. Please create a new hiring passkey.";
+  }
+  if (lower.includes("invalidstateerror")) {
+    return "A passkey is already registered or the session state was invalid. Please create a fresh passkey.";
+  }
+  if (lower.includes("notsupportederror") || lower.includes("not supported")) {
+    return "Passkeys are not supported on this browser or platform. Please use Chrome, Edge, Safari, or Brave with biometrics or a security key.";
+  }
+  return msg;
+}
+
 /**
  * Creates a brand new passkey hiring wallet by clearing any existing local
  * storage and running a fresh WebAuthn ceremony + EIP-7702 upgrade registration
@@ -183,10 +214,7 @@ export async function createFreshHiringWallet(account?: string): Promise<CreateH
     console.warn("[altana] Fresh passkey wallet creation failed:", err);
     return {
       ok: false,
-      error:
-        err instanceof Error
-          ? err.message
-          : "Passkey setup was cancelled or isn't available in this browser.",
+      error: formatPasskeyError(err, "create"),
     };
   }
 }
@@ -215,10 +243,7 @@ export async function recoverHiringWallet(account?: string): Promise<CreateHirin
     console.warn("[altana] Passkey wallet recovery failed:", err);
     return {
       ok: false,
-      error:
-        err instanceof Error
-          ? err.message
-          : "No hiring wallet passkey was found for this site on this device.",
+      error: formatPasskeyError(err, "recover"),
     };
   }
 }

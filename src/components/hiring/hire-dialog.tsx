@@ -183,7 +183,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   async function handleCreateWallet() {
     setConnecting(true);
     setWalletError(null);
-    const result = await createOrLoadHiringWallet(connectedAddress);
+    const result = await createFreshHiringWallet(connectedAddress);
     setConnecting(false);
     if (result.ok) {
       setWallet(result.wallet);
@@ -283,51 +283,82 @@ export function HireDialog({ agent }: { agent: Agent }) {
         {stage === "wallet" && (
           <>
             <DialogHeader>
-              <DialogTitle>Set up your hiring passkey</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Fingerprint className="size-5 text-primary" />
+                <span>Set up your hiring passkey</span>
+              </DialogTitle>
               <DialogDescription>
-                Hiring runs on BNB Testnet through Altana ERC-8183 escrow.
-                Your browser will prompt you to create a secure passkey (Windows Hello, Touch ID, or Google Account).
+                Hiring runs non-custodially on BNB Testnet through Altana ERC-8183 escrow.
+                Your browser will prompt you to create a hardware passkey (Windows Hello, Touch ID, or Google Password Manager).
               </DialogDescription>
             </DialogHeader>
 
             {walletError && (
-              <Alert variant="destructive">
-                <AlertTriangle />
-                <AlertTitle>Passkey setup was not completed</AlertTitle>
-                <AlertDescription>{walletError}</AlertDescription>
+              <Alert variant="destructive" className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                  <div>
+                    <AlertTitle className="text-xs font-semibold">Passkey setup note</AlertTitle>
+                    <AlertDescription className="text-xs leading-relaxed">{walletError}</AlertDescription>
+                  </div>
+                </div>
+                {walletError.toLowerCase().includes("no existing passkey") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs mt-1 bg-background/60 hover:bg-background"
+                    onClick={handleCreateWallet}
+                    disabled={connecting}
+                  >
+                    {connecting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : null}
+                    Create 1-Click Passkey Now
+                  </Button>
+                )}
               </Alert>
             )}
 
-            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-4 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 p-3.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2 font-medium text-foreground">
-                <Fingerprint className="size-4 text-primary" />
-                <span>What is this browser prompt?</span>
+                <CheckCircle2 className="size-4 text-emerald-500" />
+                <span>Quick Setup Tip</span>
               </div>
               <p>
-                When you click below, Chrome will ask <strong>&quot;Choose where to save your passkey for localhost&quot;</strong>.
-              </p>
-              <p>
-                Select your <strong>Google Account</strong>, <strong>Windows Hello</strong>, or <strong>This device</strong>. This creates a hardware-secured key so you can sign escrow intents without managing private keys or seed phrases.
+                When your browser prompts you, select <strong>&quot;Windows Hello&quot;</strong>, <strong>&quot;Google Password Manager&quot;</strong>, <strong>&quot;Touch ID&quot;</strong>, or <strong>&quot;This device&quot;</strong> to create the passkey directly on your device without scanning QR codes.
               </p>
             </div>
 
-            <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <DialogFooter className="flex-col gap-2 sm:flex-col pt-1">
               <Button
                 onClick={handleCreateWallet}
                 disabled={connecting || recovering}
-                className="w-full"
+                className="w-full font-medium"
               >
-                {connecting && <Loader2 className="animate-spin" />}
-                {connecting ? "Waiting for passkey..." : "Create Hiring Wallet"}
+                {connecting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    <span>Waiting for passkey confirmation...</span>
+                  </>
+                ) : (
+                  <>
+                    <Fingerprint className="size-4 mr-2" />
+                    <span>Create Hiring Passkey</span>
+                  </>
+                )}
               </Button>
               <Button
                 onClick={handleRecoverWallet}
                 disabled={connecting || recovering}
-                variant="outline"
-                className="w-full"
+                variant="ghost"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
               >
-                {recovering && <Loader2 className="animate-spin" />}
-                {recovering ? "Looking for your passkey..." : "Restore an existing hiring wallet"}
+                {recovering ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin mr-1.5" />
+                    <span>Searching device keychain...</span>
+                  </>
+                ) : (
+                  <span>Already saved a passkey on this device? Restore</span>
+                )}
               </Button>
             </DialogFooter>
           </>
