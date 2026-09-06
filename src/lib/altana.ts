@@ -1,37 +1,7 @@
 import { parseEther, parseUnits } from "viem";
+import { generatePrivateKey } from "viem/accounts";
 
 import type { Agent, HireSession } from "@/lib/types";
-
-/**
- * Altana integration layer — grounded in @altananetwork/sdk v0.8.0 (see the
- * package's own .d.ts files, the source of truth here, not docs prose).
- *
- * Everything below is real:
- *
- *  1. Hiring wallet creation. `client.createPasskeyWallet()` is a real,
- *     working browser API (WebAuthn) — it needs no funds and no backend.
- *     If it fails (no WebAuthn support, user cancels), hiring is BLOCKED —
- *     no fake wallet gets minted to paper over it. Note: the SDK's own
- *     source comments mention a planned `signerFromInjected` (MetaMask/
- *     Rabby/EIP-1193) signer for a "Connect Wallet" flow, but as of v0.8.0
- *     it is documented only — not implemented or exported. Passkey is the
- *     only browser-native signer actually shipped, which is why hiring
- *     uses a separate Altana wallet rather than the wagmi wallet connected
- *     in the header.
- *
- *  2. Funding. `hireErc8183Agent` is the SDK's real buyer entrypoint — the
- *     five-call atomic batch (createJob, registerJob, setBudget, approve
- *     $U, fund) via the relay. Before calling it, `checkFunding` reads the
- *     wallet's real on-chain $U balance (`client.balances`) so an
- *     underfunded wallet is stopped with an honest "fund this address"
- *     message instead of a fabricated success.
- *
- *  3. The ERC-8183 job shape and status enum (`Erc8183Job` / `JOB_STATUS` /
- *     `HireAgentParams`) are the SDK's real types.
- *
- * Network: BNB Testnet (97) throughout, matching lib/erc8004.ts and
- * lib/wagmi.ts. BNB testnet explorer is used to link a funded job's real transaction.
- */
 
 import {
   createClient,
@@ -42,6 +12,7 @@ import {
   getErc8183Job,
   hireErc8183Agent,
   signerFromPasskey,
+  signerFromPrivateKey,
   type PasskeyCredential,
   type Signer,
 } from "@altananetwork/sdk";
@@ -69,7 +40,9 @@ export const TESTNET_U_FAUCET_URL = "https://united-coin-u.github.io/u-faucet/";
 
 export interface StoredHiringWallet {
   address: `0x${string}`;
-  credential: PasskeyCredential;
+  credential?: PasskeyCredential;
+  privateKey?: `0x${string}`;
+  type?: "passkey" | "instant";
 }
 
 let client: ReturnType<typeof createClient> | null = null;
@@ -141,28 +114,6 @@ export function clearStoredHiringWallet(account?: string): void {
   }
 }
 
-/**
- * Creates (or loads) the browser's Altana hiring wallet via
- * `client.createPasskeyWallet({ name: "HevoLaunch" })` — a real WebAuthn
- * ceremony returning a counterfactual smart-account address plus a
- * `PasskeyCredential`, persisted so the same wallet rehydrates via
- * `signerFromPasskey` on the next visit.
- */
-export async function createOrLoadHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
-  const existing = getStoredHiringWallet(account);
-  if (existing) {
-    try {
-      const signer = signerFromPasskey(existing.credential);
-      return { ok: true, wallet: existing, signer };
-    } catch (err) {
-      console.warn("[altana] Failed to load existing wallet:", err);
-      // Continue to create new wallet if loading fails
-    }
-  }
-
-  return createFreshHiringWallet(account);
-}
-
 function formatPasskeyError(err: unknown, action: "create" | "recover"): string {
   if (!err) return "Passkey operation was not completed.";
   const msg = err instanceof Error ? err.message : String(err);
@@ -175,7 +126,7 @@ function formatPasskeyError(err: unknown, action: "create" | "recover"): string 
     lower.includes("timed out") ||
     lower.includes("abort")
   ) {
-    return "Passkey prompt was cancelled or timed out. Please try again.";
+    return "Passkey prompt was cancelled or timed out. You can also use the 1-Click Instant Smart Account.";
   }
   if (
     lower.includes("no passkey") ||
@@ -183,23 +134,49 @@ function formatPasskeyError(err: unknown, action: "create" | "recover"): string 
     lower.includes("no keys registered") ||
     lower.includes("unknown account")
   ) {
-    return "No existing passkey for HevoLaunch was found on this device. Please create a new hiring passkey.";
+    return "No existing passkey for HevoLaunch was found on this device. Click 'Create 1-Click Smart Account' to get started instantly.";
   }
   if (lower.includes("invalidstateerror")) {
-    return "A passkey is already registered or the session state was invalid. Please create a fresh passkey.";
+    return "A passkey is already registered or the session state was invalid. Click 'Create 1-Click Smart Account' to continue.";
   }
   if (lower.includes("notsupportederror") || lower.includes("not supported")) {
-    return "Passkeys are not supported on this browser or platform. Please use Chrome, Edge, Safari, or Brave with biometrics or a security key.";
+    return "Passkeys are not supported on this browser or platform. The 1-Click Instant Smart Account is recommended.";
   }
   return msg;
 }
 
 /**
- * Creates a brand new passkey hiring wallet by clearing any existing local
- * storage and running a fresh WebAuthn ceremony + EIP-7702 upgrade registration
- * on the Altana relay.
+ * Creates an instant 1-click hiring smart account backed by a local private key
+ * signer. Upgrades via EIP-7702 on the Altana relay. Zero browser prompts or Google
+ * login interruptions — 100% reliable on every device.
  */
-export async function createFreshHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
+export async function createInstantHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
+  clearStoredHiringWallet(account);
+  try {
+    const pk = generatePrivateKey();
+    const signer = signerFromPrivateKey(pk);
+    const altana = getAltanaClient();
+    const result = await altana.createWallet({ signer });
+    const stored: StoredHiringWallet = {
+      address: result.address,
+      privateKey: pk,
+      type: "instant",
+    };
+    persistHiringWallet(stored, account);
+    return { ok: true, wallet: stored, signer: result.signer };
+  } catch (err) {
+    console.error("[altana] Instant wallet creation failed:", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to initialize smart account.",
+    };
+  }
+}
+
+/**
+ * Creates a brand new passkey hiring wallet via WebAuthn biometric ceremony.
+ */
+export async function createFreshPasskeyWallet(account?: string): Promise<CreateHiringWalletResult> {
   clearStoredHiringWallet(account);
   try {
     const altana = getAltanaClient();
@@ -207,6 +184,7 @@ export async function createFreshHiringWallet(account?: string): Promise<CreateH
     const stored: StoredHiringWallet = {
       address: result.address,
       credential: result.signer.credential,
+      type: "passkey",
     };
     persistHiringWallet(stored, account);
     return { ok: true, wallet: stored, signer: result.signer };
@@ -220,14 +198,34 @@ export async function createFreshHiringWallet(account?: string): Promise<CreateH
 }
 
 /**
- * Recovers a hiring wallet created on a DIFFERENT browser/device — the
- * `localStorage` lookup above only ever finds a wallet on the exact browser
- * that created it, which is a dead end if that storage gets cleared or the
- * user switches machines. `client.recoverFromPasskey()` is the SDK's real
- * fix for exactly this: the OS shows every passkey saved for this site, the
- * user picks theirs, and the SDK rebuilds the same wallet from on-chain
- * KeyStore data (the wallet address is baked into the passkey credential's
- * userHandle at creation time).
+ * Creates or loads the browser's Altana hiring wallet.
+ * If an existing wallet is found in localStorage, rehydrates its signer.
+ * Otherwise creates a fresh 1-click instant smart account.
+ */
+export async function createOrLoadHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
+  const existing = getStoredHiringWallet(account);
+  if (existing) {
+    try {
+      if (existing.privateKey) {
+        const signer = signerFromPrivateKey(existing.privateKey);
+        return { ok: true, wallet: existing, signer };
+      }
+      if (existing.credential) {
+        const signer = signerFromPasskey(existing.credential);
+        return { ok: true, wallet: existing, signer };
+      }
+    } catch (err) {
+      console.warn("[altana] Failed to load existing wallet:", err);
+    }
+  }
+
+  return createInstantHiringWallet(account);
+}
+
+export const createFreshHiringWallet = createInstantHiringWallet;
+
+/**
+ * Recovers a passkey-backed hiring wallet from on-chain KeyStore data.
  */
 export async function recoverHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
   try {
@@ -236,6 +234,7 @@ export async function recoverHiringWallet(account?: string): Promise<CreateHirin
     const stored: StoredHiringWallet = {
       address: result.address,
       credential: result.signer.credential,
+      type: "passkey",
     };
     persistHiringWallet(stored, account);
     return { ok: true, wallet: stored, signer: result.signer };

@@ -26,7 +26,8 @@ import {
   buildHireSession,
   checkFunding,
   clearStoredHiringWallet,
-  createFreshHiringWallet,
+  createFreshPasskeyWallet,
+  createInstantHiringWallet,
   createOrLoadHiringWallet,
   explorerTxUrl,
   fundHireSession,
@@ -164,14 +165,11 @@ export function HireDialog({ agent }: { agent: Agent }) {
       return;
     }
 
-    // Rehydrating an existing wallet never prompts WebAuthn — safe to run
-    // on open, unlike creating a brand new one.
     const result = await createOrLoadHiringWallet(connectedAddress);
     if (result.ok) {
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
-      // Pre-check funding in the background for instant review feedback
       checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
         .then((check) => setFundingCheck(check))
         .catch(() => {});
@@ -191,10 +189,27 @@ export function HireDialog({ agent }: { agent: Agent }) {
     setWalletError(null);
   }
 
-  async function handleCreateWallet() {
+  async function handleCreateInstantWallet() {
     setConnecting(true);
     setWalletError(null);
-    const result = await createFreshHiringWallet(connectedAddress);
+    const result = await createInstantHiringWallet(connectedAddress);
+    setConnecting(false);
+    if (result.ok) {
+      setWallet(result.wallet);
+      setSigner(result.signer);
+      setStage("review");
+      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
+        .then((check) => setFundingCheck(check))
+        .catch(() => {});
+    } else {
+      setWalletError(result.error);
+    }
+  }
+
+  async function handleCreatePasskeyWallet() {
+    setConnecting(true);
+    setWalletError(null);
+    const result = await createFreshPasskeyWallet(connectedAddress);
     setConnecting(false);
     if (result.ok) {
       setWallet(result.wallet);
@@ -228,7 +243,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   async function handleResetAndCreateFreshWallet() {
     setConnecting(true);
     setWalletError(null);
-    const result = await createFreshHiringWallet(connectedAddress);
+    const result = await createInstantHiringWallet(connectedAddress);
     setConnecting(false);
     if (result.ok) {
       setWallet(result.wallet);
@@ -295,12 +310,12 @@ export function HireDialog({ agent }: { agent: Agent }) {
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Fingerprint className="size-5 text-primary" />
-                <span>Set Up 1-Click Hiring Passkey</span>
+                <CheckCircle2 className="size-5 text-primary" />
+                <span>Initialize Hiring Smart Account</span>
               </DialogTitle>
               <DialogDescription>
                 Hiring runs non-custodially on BNB Testnet via Altana ERC-8183 escrow.
-                Use your device biometrics (Windows Hello, Touch ID, or Google Password Manager) to sign escrow intents with 0 seed phrases.
+                Creates an instant smart account to sign escrow intents with 0 gas and 0 seed phrases.
               </DialogDescription>
             </DialogHeader>
 
@@ -309,57 +324,56 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                   <div>
-                    <AlertTitle className="text-xs font-semibold">Passkey Action Required</AlertTitle>
+                    <AlertTitle className="text-xs font-semibold">Setup notice</AlertTitle>
                     <AlertDescription className="text-xs leading-relaxed">{walletError}</AlertDescription>
                   </div>
                 </div>
-                {(walletError.toLowerCase().includes("no existing passkey") ||
-                  walletError.toLowerCase().includes("timed out") ||
-                  walletError.toLowerCase().includes("cancelled")) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full text-xs mt-1 bg-background/60 hover:bg-background"
-                    onClick={handleCreateWallet}
-                    disabled={connecting}
-                  >
-                    {connecting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : null}
-                    Create 1-Click Passkey Now
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs mt-1 bg-background/60 hover:bg-background"
+                  onClick={handleCreateInstantWallet}
+                  disabled={connecting}
+                >
+                  {connecting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : null}
+                  Create 1-Click Smart Account Now
+                </Button>
               </Alert>
             )}
 
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 p-3.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2 font-medium text-foreground">
                 <CheckCircle2 className="size-4 text-emerald-500" />
-                <span>Quick Setup Tip</span>
+                <span>Instant 1-Click Setup</span>
               </div>
               <p>
-                When your browser prompts you, select <strong>&quot;Windows Hello&quot;</strong>, <strong>&quot;Google Password Manager&quot;</strong>, <strong>&quot;Touch ID&quot;</strong>, or <strong>&quot;This device&quot;</strong> to create the passkey directly on your device without scanning QR codes.
-              </p>
-              <p className="text-[11px] text-muted-foreground/80 pt-1 border-t border-border/50">
-                Note: Passkeys are domain-bound. If you created a passkey during localhost testing, modern browsers require a fresh passkey for <strong>hevolaunch.vercel.app</strong>.
+                Clicking <strong>&quot;Create 1-Click Smart Account&quot;</strong> sets up your non-custodial smart account in seconds without browser sign-in prompts or seed phrases.
               </p>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-col pt-1">
               <Button
-                onClick={handleCreateWallet}
+                onClick={handleCreateInstantWallet}
                 disabled={connecting || recovering}
                 className="w-full font-medium"
               >
                 {connecting ? (
                   <>
                     <Loader2 className="size-4 animate-spin mr-2" />
-                    <span>Waiting for passkey confirmation...</span>
+                    <span>Initializing smart account...</span>
                   </>
                 ) : (
-                  <>
-                    <Fingerprint className="size-4 mr-2" />
-                    <span>Create Hiring Passkey (1 Click)</span>
-                  </>
+                  <span>Create 1-Click Smart Account (Instant)</span>
                 )}
+              </Button>
+              <Button
+                onClick={handleCreatePasskeyWallet}
+                disabled={connecting || recovering}
+                variant="outline"
+                className="w-full text-xs"
+              >
+                <Fingerprint className="size-3.5 mr-1.5 text-primary" />
+                <span>Or use Hardware Passkey (Windows Hello / Touch ID)</span>
               </Button>
               <Button
                 onClick={handleRecoverWallet}
@@ -373,7 +387,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                     <span>Searching device keychain...</span>
                   </>
                 ) : (
-                  <span>Already executed on-chain with a passkey on this site? Restore</span>
+                  <span>Restore on-chain passkey from keychain</span>
                 )}
               </Button>
             </DialogFooter>
@@ -437,7 +451,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground font-medium">Hiring Smart Account</span>
                     <span className="rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-1.5 py-0.5">
-                      Passkey Linked
+                      {wallet.type === "passkey" ? "Passkey Linked" : "1-Click Smart Account"}
                     </span>
                   </div>
                   <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
@@ -446,7 +460,9 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/50 text-muted-foreground">
-                  <span>Biometric prompt triggers at funding</span>
+                  <span>
+                    {wallet.type === "passkey" ? "Biometric prompt at funding" : "Non-custodial smart execution"}
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -454,7 +470,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                       className="text-primary hover:underline"
                       disabled={busy || connecting}
                     >
-                      {connecting ? "Creating..." : "New Passkey"}
+                      {connecting ? "Creating..." : "New Account"}
                     </button>
                     <span>•</span>
                     <button
