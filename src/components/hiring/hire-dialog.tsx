@@ -25,6 +25,7 @@ import type { Agent, HireSession } from "@/lib/types";
 import {
   buildHireSession,
   checkFunding,
+  clearStoredHiringWallet,
   createFreshHiringWallet,
   createOrLoadHiringWallet,
   explorerTxUrl,
@@ -180,6 +181,16 @@ export function HireDialog({ agent }: { agent: Agent }) {
     }
   }
 
+  function handleDisconnectHiringWallet() {
+    clearStoredHiringWallet(connectedAddress);
+    setWallet(null);
+    setSigner(null);
+    setFundingCheck(null);
+    setSession(null);
+    setStage("wallet");
+    setWalletError(null);
+  }
+
   async function handleCreateWallet() {
     setConnecting(true);
     setWalletError(null);
@@ -285,11 +296,11 @@ export function HireDialog({ agent }: { agent: Agent }) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Fingerprint className="size-5 text-primary" />
-                <span>Set up your hiring passkey</span>
+                <span>Set Up 1-Click Hiring Passkey</span>
               </DialogTitle>
               <DialogDescription>
-                Hiring runs non-custodially on BNB Testnet through Altana ERC-8183 escrow.
-                Your browser will prompt you to create a hardware passkey (Windows Hello, Touch ID, or Google Password Manager).
+                Hiring runs non-custodially on BNB Testnet via Altana ERC-8183 escrow.
+                Use your device biometrics (Windows Hello, Touch ID, or Google Password Manager) to sign escrow intents with 0 seed phrases.
               </DialogDescription>
             </DialogHeader>
 
@@ -298,11 +309,13 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                   <div>
-                    <AlertTitle className="text-xs font-semibold">Passkey setup note</AlertTitle>
+                    <AlertTitle className="text-xs font-semibold">Passkey Action Required</AlertTitle>
                     <AlertDescription className="text-xs leading-relaxed">{walletError}</AlertDescription>
                   </div>
                 </div>
-                {walletError.toLowerCase().includes("no existing passkey") && (
+                {(walletError.toLowerCase().includes("no existing passkey") ||
+                  walletError.toLowerCase().includes("timed out") ||
+                  walletError.toLowerCase().includes("cancelled")) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -325,6 +338,9 @@ export function HireDialog({ agent }: { agent: Agent }) {
               <p>
                 When your browser prompts you, select <strong>&quot;Windows Hello&quot;</strong>, <strong>&quot;Google Password Manager&quot;</strong>, <strong>&quot;Touch ID&quot;</strong>, or <strong>&quot;This device&quot;</strong> to create the passkey directly on your device without scanning QR codes.
               </p>
+              <p className="text-[11px] text-muted-foreground/80 pt-1 border-t border-border/50">
+                Note: Passkeys are domain-bound. If you created a passkey during localhost testing, modern browsers require a fresh passkey for <strong>hevolaunch.vercel.app</strong>.
+              </p>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-col pt-1">
@@ -341,7 +357,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 ) : (
                   <>
                     <Fingerprint className="size-4 mr-2" />
-                    <span>Create Hiring Passkey</span>
+                    <span>Create Hiring Passkey (1 Click)</span>
                   </>
                 )}
               </Button>
@@ -357,7 +373,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                     <span>Searching device keychain...</span>
                   </>
                 ) : (
-                  <span>Already saved a passkey on this device? Restore</span>
+                  <span>Already executed on-chain with a passkey on this site? Restore</span>
                 )}
               </Button>
             </DialogFooter>
@@ -416,22 +432,41 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <span className="text-muted-foreground">Escrow budget</span>
                 <span className="font-semibold text-foreground">{budgetLabel}</span>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2.5">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground">Hiring wallet</span>
-                  <button
-                    type="button"
-                    onClick={handleResetAndCreateFreshWallet}
-                    className="text-left text-[11px] text-primary hover:underline"
-                    disabled={busy || connecting}
-                  >
-                    {connecting ? "Setting up passkey..." : "Reset / New Passkey"}
-                  </button>
+              <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground font-medium">Hiring Smart Account</span>
+                    <span className="rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-1.5 py-0.5">
+                      Passkey Linked
+                    </span>
+                  </div>
+                  <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
+                    {truncate(wallet.address)}
+                    <CopyButton value={wallet.address} />
+                  </span>
                 </div>
-                <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
-                  {truncate(wallet.address)}
-                  <CopyButton value={wallet.address} />
-                </span>
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/50 text-muted-foreground">
+                  <span>Biometric prompt triggers at funding</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResetAndCreateFreshWallet}
+                      className="text-primary hover:underline"
+                      disabled={busy || connecting}
+                    >
+                      {connecting ? "Creating..." : "New Passkey"}
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={handleDisconnectHiringWallet}
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={busy || connecting}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {fundingCheck && (
