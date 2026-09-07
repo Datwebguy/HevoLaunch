@@ -10,7 +10,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import { bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 import type { Signer } from "@altananetwork/sdk";
 import {
   AlertTriangle,
@@ -34,8 +34,6 @@ import {
   getStoredHiringWallet,
   PAYMENT_TOKEN_ADDRESS,
   recoverHiringWallet,
-  TESTNET_GAS_FAUCET_URL,
-  TESTNET_U_FAUCET_URL,
   type FundingCheck,
   type StoredHiringWallet,
 } from "@/lib/altana";
@@ -74,7 +72,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   const [fundingCheck, setFundingCheck] = useState<FundingCheck | null>(null);
 
   // This is HevoLaunch's own connected wallet (header nav, MetaMask/injected
-  // via wagmi) — a completely different address from the Altana passkey
+  // via wagmi) — a completely different address from the Altana smart account
   // hiring wallet above. Funding a job requires the LATTER; this lets a
   // user move $U they already hold in the FORMER over in one click instead
   // of manually copying addresses between two wallets.
@@ -89,7 +87,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   const [sendError, setSendError] = useState<string | null>(null);
   const { isLoading: confirmingSend, isSuccess: sendConfirmed } = useWaitForTransactionReceipt({
     hash: sendHash,
-    chainId: bscTestnet.id,
+    chainId: bsc.id,
   });
 
   useEffect(() => {
@@ -115,8 +113,8 @@ export function HireDialog({ agent }: { agent: Agent }) {
     if (!wallet) return;
     setSendError(null);
     try {
-      if (connectedChainId !== bscTestnet.id) {
-        await switchChainAsync({ chainId: bscTestnet.id });
+      if (connectedChainId !== bsc.id) {
+        await switchChainAsync({ chainId: bsc.id });
       }
       const transferAmount = session
         ? BigInt(session.budget)
@@ -126,7 +124,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
         abi: erc20Abi,
         functionName: "transfer",
         args: [wallet.address, transferAmount],
-        chainId: bscTestnet.id,
+        chainId: bsc.id,
       });
       setSendHash(hash);
     } catch (err) {
@@ -138,13 +136,13 @@ export function HireDialog({ agent }: { agent: Agent }) {
     if (!wallet) return;
     setSendError(null);
     try {
-      if (connectedChainId !== bscTestnet.id) {
-        await switchChainAsync({ chainId: bscTestnet.id });
+      if (connectedChainId !== bsc.id) {
+        await switchChainAsync({ chainId: bsc.id });
       }
       const hash = await sendTransactionAsync({
         to: wallet.address,
-        value: parseEther("0.01"),
-        chainId: bscTestnet.id,
+        value: parseEther("0.005"),
+        chainId: bsc.id,
       });
       setSendHash(hash);
     } catch (err) {
@@ -314,7 +312,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <span>Initialize Hiring Smart Account</span>
               </DialogTitle>
               <DialogDescription>
-                Hiring runs non-custodially on BNB Testnet via Altana ERC-8183 escrow.
+                Hiring runs non-custodially on BNB Smart Chain via Altana ERC-8183 escrow.
                 Creates an instant smart account to sign escrow intents with 0 gas and 0 seed phrases.
               </DialogDescription>
             </DialogHeader>
@@ -555,7 +553,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
               <DialogTitle>Funding job escrow</DialogTitle>
               <DialogDescription>
                 Checking your wallet&apos;s $U balance, then creating and
-                funding the job on BNB Testnet — this is a real on-chain
+                funding the job on BNB Smart Chain — this is a real on-chain
                 transaction through Altana&apos;s relay.
               </DialogDescription>
             </DialogHeader>
@@ -596,14 +594,14 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   `${agent.name} has been hired. Track progress from your dashboard.`}
                 {session.status === "UNFUNDED" && needsGas && (
                   <>
-                    Your hiring wallet needs a little tBNB to cover gas for
+                    Your hiring wallet needs a little BNB to cover gas for
                     the one on-chain step the relay doesn&apos;t sponsor
                     (approving $U). Fund it, then try again — nothing was
                     charged.
                   </>
                 )}
                 {session.status === "UNFUNDED" && !needsGas && needsU && (
-                  "Your hiring wallet doesn't have enough $U on BNB Testnet to cover this job yet. Fund it, then try again — nothing was charged."
+                  "Your hiring wallet doesn't have enough $U on BNB Smart Chain to cover this job yet. Fund it, then try again — nothing was charged."
                 )}
                 {session.status === "FAILED" &&
                   (session.error ||
@@ -615,7 +613,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2.5">
                   <span className="text-muted-foreground">
-                    Send {needsU && needsGas ? "$U + tBNB" : needsGas ? "tBNB" : "$U"} to
+                    Send {needsU && needsGas ? "$U + BNB" : needsGas ? "BNB" : "$U"} to
                   </span>
                   <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
                     {truncate(wallet.address)}
@@ -631,23 +629,12 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                   {needsU && (
                     <a
-                      href={TESTNET_U_FAUCET_URL}
+                      href="https://bscscan.com/token/0xcE24439F2D9C6a2289F741120FE202248B666666"
                       target="_blank"
                       rel="noreferrer"
                       className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >
-                      Get testnet $U
-                      <ExternalLink className="size-3.5" />
-                    </a>
-                  )}
-                  {needsGas && (
-                    <a
-                      href={TESTNET_GAS_FAUCET_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      Get testnet BNB for gas
+                      View $U Token on BscScan
                       <ExternalLink className="size-3.5" />
                     </a>
                   )}

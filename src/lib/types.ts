@@ -72,7 +72,7 @@ export interface Agent {
   agentId: number;
   /** The agent's Altana wallet address: ERC-8004 token owner and ERC-8183 `provider`. */
   agentIdentityAddress: `0x${string}`;
-  /** ERC-8004 registry chain. Curated Hevo agents are registered on BSC testnet (97). */
+  /** ERC-8004 registry chain. Curated Hevo agents are registered on BSC Mainnet (56). */
   identityChainId: number;
   chain: ChainName;
   builtWith: "BNB Agent Studio";

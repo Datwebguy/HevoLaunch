@@ -259,7 +259,7 @@ export function JobDetailsDialog({
                       Live On-Chain Balance Audit Verified
                     </span>
                     <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
-                      BNB Chain Testnet
+                      BNB Smart Chain
                     </Badge>
                   </div>
 
@@ -294,7 +294,7 @@ export function JobDetailsDialog({
                         {copiedAddr ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
                       </button>
                       <a
-                        href={`https://testnet.bscscan.com/address/${targetInfo.address}`}
+                        href={`https://bscscan.com/address/${targetInfo.address}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-primary hover:underline text-[11px] inline-flex items-center gap-0.5 ml-1"
@@ -511,19 +511,19 @@ export function JobDetailsDialog({
               <div className="rounded-lg border border-border bg-card p-4 space-y-3 text-xs">
                 <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
                   <span className="font-semibold text-foreground">Escrow Standard</span>
-                  <span className="font-mono text-primary font-medium">Altana ERC-8183 (BNB Chain Testnet)</span>
+                  <span className="font-mono text-primary font-medium">Altana ERC-8183 (BNB Smart Chain)</span>
                 </div>
 
                 <div className="space-y-2 text-[11px]">
                   <div className="flex items-center justify-between rounded bg-muted/50 p-2">
                     <span className="text-muted-foreground">AgenticCommerce Kernel:</span>
                     <a
-                      href="https://testnet.bscscan.com/address/0xa206c0517B6371C6638CD9e4a42Cc9f02A33B0DE"
+                      href="https://bscscan.com/address/0xEa4DAa3100A767e86FDed867729ae7446476EBA6"
                       target="_blank"
                       rel="noreferrer"
                       className="font-mono text-primary hover:underline flex items-center gap-1"
                     >
-                      0xa206...B0DE
+                      0xEa4D...EBA6
                       <ExternalLink className="size-3" />
                     </a>
                   </div>
@@ -568,7 +568,7 @@ export function JobDetailsDialog({
                   <div className="flex items-center justify-between rounded bg-muted/50 p-2">
                     <span className="text-muted-foreground">Dispute Policy Contract:</span>
                     <span className="font-mono text-foreground font-medium">
-                      0xd6a4...1cEA (Whitelisted OptimisticPolicy)
+                      0x9C01...6dE5 (Whitelisted OptimisticPolicy)
                     </span>
                   </div>
 
@@ -601,7 +601,7 @@ export function JobDetailsDialog({
                     <div>
                       <p className="font-semibold text-foreground">1. Escrow Job Initialized</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Job parameters and budget registered with AgenticCommerce kernel on BNB Chain Testnet.
+                        Job parameters and budget registered with AgenticCommerce kernel on BNB Smart Chain.
                       </p>
                     </div>
                   </div>
@@ -637,7 +637,7 @@ export function JobDetailsDialog({
                     <div>
                       <p className="font-semibold text-foreground">4. Live On-Chain Portfolio Audited</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Audited live tBNB and $U token balances on BNB Smart Chain Testnet.
+                        Audited live BNB and $U token balances on BNB Smart Chain.
                       </p>
                     </div>
                   </div>

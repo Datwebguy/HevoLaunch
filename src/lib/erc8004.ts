@@ -14,12 +14,12 @@ import type { Agent } from "@/lib/types";
  *    SDK rather than hardcoding it — see ERC8183_ADDRESSES in
  *    node_modules/@altananetwork/sdk/dist/erc8183.js for the source values.
  *
- * We target BNB Testnet (97) throughout, matching lib/altana.ts and
+ * We target BNB Smart Chain Mainnet (56) throughout, matching lib/altana.ts and
  * lib/wagmi.ts. 8004scan pages for curated agents are
- * https://8004scan.io/agents/97/<tokenId> — never chain 56.
+ * https://8004scan.io/agents/bsc/<tokenId>.
  */
 
-export const IDENTITY_CHAIN_ID = 97;
+export const IDENTITY_CHAIN_ID = 56;
 
 export function getIdentityRegistryAddress(): `0x${string}` {
   return erc8183Addresses(IDENTITY_CHAIN_ID).registry;

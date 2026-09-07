@@ -541,13 +541,13 @@ export default function TaskDetailPage({ params }: TaskPageProps) {
                 </div>
                 <div className="flex items-center justify-between p-2 rounded bg-muted/50">
                   <span className="text-muted-foreground">Network:</span>
-                  <span className="text-foreground">BNB Chain Testnet</span>
+                  <span className="text-foreground">BNB Smart Chain</span>
                 </div>
                 {task.escrowTxHash && (
                   <div className="flex items-center justify-between p-2 rounded bg-muted/50">
                     <span className="text-muted-foreground">Funding Tx:</span>
                     <a
-                      href={`https://testnet.bscscan.com/tx/${task.escrowTxHash}`}
+                      href={`https://bscscan.com/tx/${task.escrowTxHash}`}
                       target="_blank"
                       rel="noreferrer"
                       className="text-primary hover:underline flex items-center gap-1"

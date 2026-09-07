@@ -248,7 +248,7 @@ export default function DashboardPage() {
             My hires
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real ERC-8183 escrow jobs on BNB Testnet and live deliverable statuses.
+            Real ERC-8183 escrow jobs on BNB Smart Chain and live deliverable statuses.
           </p>
         </div>
 

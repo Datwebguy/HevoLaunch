@@ -81,7 +81,7 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
     // Get reputation and verification from 8004scan using the correct chain
     let scan: Awaited<ReturnType<typeof getAgent>> | null = null;
     try {
-      scan = await getAgent(agent.identityChainId ?? 97, String(agent.agentId));
+      scan = await getAgent(agent.identityChainId ?? 56, String(agent.agentId));
     } catch (scanErr) {
       console.warn(`[8004scan] lookup timed out/failed for agent ${agent.agentId}:`, scanErr);
     }

@@ -31,7 +31,7 @@ export default function CreateTaskPage() {
     deadlineHours: 48,
     deliverables: ["Comprehensive strategy execution plan", "Gas-optimized swap routing"],
     newDeliverable: "",
-    terms: "Execution must be non-custodial and verified on BNB Chain Testnet.",
+    terms: "Execution must be non-custodial and verified on BNB Smart Chain.",
   });
 
   const addDeliverable = () => {

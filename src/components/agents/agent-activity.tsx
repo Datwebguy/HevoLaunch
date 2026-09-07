@@ -281,7 +281,7 @@ export function AgentActivity({ agent }: AgentActivityProps) {
                       )}
                       {item.txHash && (
                         <a
-                          href={`https://testnet.bscscan.com/tx/${item.txHash}`}
+                          href={`https://bscscan.com/tx/${item.txHash}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 text-primary hover:underline"

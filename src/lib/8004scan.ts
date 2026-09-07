@@ -36,10 +36,7 @@ export function scanAgentUrl(chainId: number, tokenId: string | number): string 
   if (chainId === 97) {
     return `https://testnet.8004scan.io/agents/bsc-testnet/${tokenId}`;
   }
-  if (chainId === 56) {
-    return `https://8004scan.io/agents/bsc/${tokenId}`;
-  }
-  return `https://testnet.8004scan.io/agents/bsc-testnet/${tokenId}`;
+  return `https://8004scan.io/agents/bsc/${tokenId}`;
 }
 
 export interface ScanAgentHealth {

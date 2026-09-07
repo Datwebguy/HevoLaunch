@@ -87,7 +87,7 @@ export default function BecomeAProviderPage() {
           </span>
           <div className="flex-1 space-y-3">
             <h2 className="text-sm sm:text-base font-semibold text-foreground">
-              Choose your AI Coding Environment & Get Testnet Gas
+              Choose your AI Coding Environment & Network Setup
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               You can build your agent using Claude Code in your terminal, VS Code, Cursor AI IDE, OpenClaw, or Codex.
@@ -153,47 +153,42 @@ export default function BecomeAProviderPage() {
                   </div>
                 </div>
 
-                {/* FAUCETS CARD */}
+                {/* NETWORK INFO CARD */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="rounded border border-primary/30 bg-primary/5 p-3.5 space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-foreground flex items-center gap-1.5">
                         <Coins className="size-3.5 text-primary" />
-                        1. $U Payment Token Faucet
+                        1. $U Payment Token
                       </p>
                       <Badge variant="secondary" className="text-[9px] font-mono">Task Escrow Currency</Badge>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
-                      $U (United Stables) is the official ERC-8183 escrow currency used to fund tasks and pay agents. Claim testnet $U:
+                      $U (United Stables) is the official ERC-8183 escrow currency used on BNB Smart Chain:
                     </p>
-                    <a
-                      href="https://united-coin-u.github.io/u-faucet/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary hover:underline font-semibold inline-flex items-center gap-1 pt-1"
-                    >
-                      Claim Free $U Tokens <ExternalLink className="size-2.5" />
-                    </a>
+                    <div className="text-[10px] font-mono text-foreground/80 break-all pt-0.5">
+                      <code>0xcE24439F2D9C6a2289F741120FE202248B666666</code>
+                    </div>
                   </div>
 
                   <div className="rounded border border-border/70 bg-background/80 p-3.5 space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-foreground flex items-center gap-1.5">
                         <Zap className="size-3.5 text-amber-500" />
-                        2. tBNB Native Gas Faucet
+                        2. BNB Smart Chain (Chain ID 56)
                       </p>
                       <Badge variant="outline" className="text-[9px] font-mono">Transaction Gas</Badge>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
-                      Native tBNB pays the gas fees on BNB Chain Testnet when deploying contracts and minting ERC-8004 tokens:
+                      Native BNB pays gas on BNB Smart Chain when deploying contracts and minting ERC-8004 identity tokens.
                     </p>
                     <a
-                      href="https://testnet.bnbchain.org/faucet-smart"
+                      href="https://bscscan.com"
                       target="_blank"
                       rel="noreferrer"
                       className="text-primary hover:underline font-semibold inline-flex items-center gap-1 pt-1"
                     >
-                      Claim Free tBNB Gas <ExternalLink className="size-2.5" />
+                      View BscScan Explorer <ExternalLink className="size-2.5" />
                     </a>
                   </div>
                 </div>
@@ -244,11 +239,11 @@ export default function BecomeAProviderPage() {
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>Agent Prompt</span>
                 <CopyButton
-                  value={`Create a new BNB agent named <AgentName> on BSC testnet.\nCategory: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.\nIt should read on-chain DeFi portfolio holdings and return structured mathematical strategy deliverables.`}
+                  value={`Create a new BNB agent named <AgentName> on BNB Smart Chain.\nCategory: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.\nIt should read on-chain DeFi portfolio holdings and return structured mathematical strategy deliverables.`}
                 />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
-{`Create a new BNB agent named <AgentName> on BSC testnet.
+{`Create a new BNB agent named <AgentName> on BNB Smart Chain.
 Category: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.
 It should read on-chain DeFi portfolio holdings and return structured mathematical strategy deliverables.`}
               </pre>
@@ -276,18 +271,18 @@ It should read on-chain DeFi portfolio holdings and return structured mathematic
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>studio.toml</span>
                 <CopyButton
-                  value={`[agent]\nname = "MyBNBAgent"\ncategory = "grid-trading"\nchain_id = 97  # BSC Testnet (or 56 for Mainnet)\n\n[payments.erc8183]\nenabled = true\ntoken = "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565"  # $U Payment Token\nprice = "1000000000000000000"                           # 1.0 $U list price (18 decimals)\nmax_price = "5000000000000000000"                       # 5.0 $U maximum quote cap\ndispute_window_seconds = 86400                          # 24-hour optimistic dispute window`}
+                  value={`[agent]\nname = "MyBNBAgent"\ncategory = "grid-trading"\nchain_id = 56  # BNB Smart Chain Mainnet\n\n[payments.erc8183]\nenabled = true\ntoken = "0xcE24439F2D9C6a2289F741120FE202248B666666"  # Mainnet $U Payment Token\nprice = "1000000000000000000"                           # 1.0 $U list price (18 decimals)\nmax_price = "5000000000000000000"                       # 5.0 $U maximum quote cap\ndispute_window_seconds = 86400                          # 24-hour optimistic dispute window`}
                 />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
 {`[agent]
 name = "MyBNBAgent"
 category = "grid-trading"
-chain_id = 97  # BSC Testnet (or 56 for Mainnet)
+chain_id = 56  # BNB Smart Chain Mainnet
 
 [payments.erc8183]
 enabled = true
-token = "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565"  # $U Payment Token
+token = "0xcE24439F2D9C6a2289F741120FE202248B666666"  # Mainnet $U Payment Token
 price = "1000000000000000000"                           # 1.0 $U list price (18 decimals)
 max_price = "5000000000000000000"                       # 5.0 $U maximum quote cap
 dispute_window_seconds = 86400                          # 24-hour optimistic dispute window`}
@@ -411,21 +406,21 @@ bag erc8004 update-metadata --key website --value "https://your-agent-site.com"`
         </Button>
         <Button variant="outline" asChild className="gap-1.5">
           <a
-            href="https://united-coin-u.github.io/u-faucet/"
+            href="https://8004scan.io"
             target="_blank"
             rel="noreferrer"
           >
-            Claim $U Tokens
-            <Coins className="size-3.5 text-primary" />
+            Explore 8004scan Registry
+            <ExternalLink className="size-3.5 text-primary" />
           </a>
         </Button>
         <Button variant="outline" asChild className="gap-1.5">
           <a
-            href="https://testnet.binance.org/faucet-smart"
+            href="https://bscscan.com"
             target="_blank"
             rel="noreferrer"
           >
-            tBNB Gas Faucet
+            BscScan Explorer
             <ExternalLink className="size-3.5" />
           </a>
         </Button>

@@ -1,7 +1,7 @@
 import type { Agent, AgentPricing, CategorySlug } from "@/lib/types";
 
 /**
- * Hire-ready agents that WILL be deployed with BNB Agent Studio on BNB Testnet (97)
+ * Hire-ready agents that WILL be deployed with BNB Agent Studio on BNB Smart Chain (56)
  * and registered on 8004scan. Fill one in per category once it's live.
  * Leave a category empty and the site shows an honest empty state —
  * never a fabricated listing.
@@ -110,8 +110,8 @@ export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
     avatarColor: DEPLOYED_AVATAR_COLOR,
     agentId: config.agentId,
     agentIdentityAddress: config.agentIdentityAddress,
-    identityChainId: 97, // BNB Testnet
-    chain: "BNB Testnet",
+    identityChainId: 56, // BNB Smart Chain Mainnet
+    chain: "BNB Smart Chain",
     builtWith: "BNB Agent Studio",
     reputation: { rating: 0, completedJobs: 0, successRate: 0, reviewCount: 0 },
     pricing: config.pricing,

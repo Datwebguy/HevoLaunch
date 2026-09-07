@@ -3,7 +3,7 @@ import type { Category } from "@/lib/types";
 
 /**
  * Server-side live-data layer for category pages — real agents registered
- * on BNB Testnet (chainId 97) for the hackathon, fetched via 8004scan and
+ * on BNB Smart Chain (chainId 56), fetched via 8004scan and
  * matched to a category by `category.discoveryQuery` (see
  * lib/categories.ts). Runs in a Server Component with Next's fetch cache
  * (see lib/8004scan.ts for the revalidate window — shorter on the Pro
@@ -19,7 +19,7 @@ import type { Category } from "@/lib/types";
  * same kind of listing.
  */
 
-const TESTNET_CHAIN_ID = 97; // BNB Testnet for hackathon
+const MAINNET_CHAIN_ID = 56; // BNB Smart Chain Mainnet
 const LIVE_AGENTS_PER_CATEGORY = 4;
 
 export interface LiveAgentsResult {
@@ -35,7 +35,7 @@ export async function getLiveAgentsForCategory(
   const trimmed = query?.trim();
   try {
     const { agents, total } = await listAgents({
-      chainId: TESTNET_CHAIN_ID,
+      chainId: MAINNET_CHAIN_ID,
       search: trimmed || category.discoveryQuery,
       sortBy: "total_score",
       // A user-typed search is a deliberate dig through the whole live

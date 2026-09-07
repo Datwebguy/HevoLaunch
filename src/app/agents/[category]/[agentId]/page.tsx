@@ -60,7 +60,7 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
   if (!category) notFound();
 
   const agent = await enrichAgent(raw);
-  const scanUrl = scanAgentUrl(agent.identityChainId ?? 97, agent.agentId);
+  const scanUrl = scanAgentUrl(agent.identityChainId ?? 56, agent.agentId);
   const similarAgents = getAgentsByCategory(raw.category).filter(
     (a) => a.id !== agent.id
   );
@@ -169,7 +169,7 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Network</span>
                         <span className="text-xs text-foreground">
-                          BNB Chain Testnet
+                          BNB Smart Chain
                         </span>
                       </div>
                       {agent.onChainName && agent.onChainName !== agent.name && (

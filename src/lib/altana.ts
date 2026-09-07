@@ -5,7 +5,7 @@ import type { Agent, HireSession } from "@/lib/types";
 
 import {
   createClient,
-  BNB_TESTNET,
+  BNB,
   ERC8183_ADDRESSES,
   erc8183Addresses,
   getErc8183DeliverableUrl,
@@ -17,26 +17,13 @@ import {
   type Signer,
 } from "@altananetwork/sdk";
 
-// Patch BSC Testnet (97) policy address to the active whitelisted OptimisticPolicy contract on testnet
-if (ERC8183_ADDRESSES[97]) {
-  ERC8183_ADDRESSES[97].policy = "0xd6a4217588F6B1F5657a92A3e94E6422aD771cEA" as `0x${string}`;
-}
+export const ACTIVE_NETWORK = BNB;
 
 const WALLET_STORAGE_KEY = "hevolaunch:altana-wallet";
 
-/** $U's real ERC-20 contract address on BNB Testnet, read from the SDK's own registry. */
-export const PAYMENT_TOKEN_ADDRESS = erc8183Addresses(BNB_TESTNET.chainId).paymentToken;
+/** $U's real ERC-20 contract address on BNB Smart Chain Mainnet, read from the SDK's own registry. */
+export const PAYMENT_TOKEN_ADDRESS = erc8183Addresses(BNB.chainId).paymentToken;
 const PAYMENT_TOKEN = PAYMENT_TOKEN_ADDRESS;
-
-/** Real BNB testnet faucet for getting tBNB */
-export const TESTNET_GAS_FAUCET_URL = "https://testnet.bnbchain.org/faucet-smart";
-
-/**
- * Real testnet faucet for $U itself (not gas) — confirmed against the
- * bnbagent-studio docs, whose listed BSC-testnet $U contract address
- * matches the SDK's PAYMENT_TOKEN_ADDRESS.
- */
-export const TESTNET_U_FAUCET_URL = "https://united-coin-u.github.io/u-faucet/";
 
 export interface StoredHiringWallet {
   address: `0x${string}`;
@@ -50,7 +37,7 @@ let client: ReturnType<typeof createClient> | null = null;
 /** Lazy singleton — createClient() just holds config, no network call. */
 function getAltanaClient() {
   if (!client) {
-    client = createClient({ chains: [BNB_TESTNET] });
+    client = createClient({ chains: [BNB] });
   }
   return client;
 }
@@ -312,7 +299,7 @@ export async function checkFunding(
   const result = await altana.balances({
     wallet,
     tokens: [PAYMENT_TOKEN],
-    chainId: BNB_TESTNET.chainId,
+    chainId: BNB.chainId,
   });
   const token = result.tokens?.[0];
   const balanceRaw = token && token.ok ? token.raw : BigInt(0);
@@ -362,7 +349,7 @@ export async function fundHireSession(
         budget: requiredRaw,
         deadlineSeconds,
       },
-      { network: BNB_TESTNET }
+      { network: BNB }
     );
 
     const funded: HireSession = {
@@ -429,9 +416,9 @@ export async function fundHireSession(
   }
 }
 
-/** Real BscScan testnet link for a funded job's transaction. */
+/** Real BscScan mainnet link for a funded job's transaction. */
 export function explorerTxUrl(txHash: string): string {
-  return `https://testnet.bscscan.com/tx/${txHash}`;
+  return `https://bscscan.com/tx/${txHash}`;
 }
 
 /**
@@ -443,7 +430,7 @@ export async function refreshJobStatus(session: HireSession): Promise<HireSessio
   if (!session.jobId) return session;
 
   try {
-    const job = await getErc8183Job(BNB_TESTNET, BigInt(session.jobId));
+    const job = await getErc8183Job(BNB, BigInt(session.jobId));
     const updated: HireSession = {
       ...session,
       status: job.statusName,
@@ -452,7 +439,7 @@ export async function refreshJobStatus(session: HireSession): Promise<HireSessio
     };
 
     if (job.statusName === "SUBMITTED" || job.statusName === "COMPLETED") {
-      updated.deliverableUrl = await getErc8183DeliverableUrl(BNB_TESTNET, BigInt(session.jobId));
+      updated.deliverableUrl = await getErc8183DeliverableUrl(BNB, BigInt(session.jobId));
     }
 
     return updated;

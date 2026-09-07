@@ -13,7 +13,7 @@ export function SiteFooter() {
             <span className="text-muted-foreground/50">&bull;</span>
             <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-emerald-500" />
-              BNB Chain Testnet
+              BNB Smart Chain
             </span>
           </div>
           <p className="text-[11px] leading-relaxed max-w-md">
@@ -29,20 +29,20 @@ export function SiteFooter() {
             Task Marketplace
           </Link>
           <a
-            href="https://united-coin-u.github.io/u-faucet/"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground transition-colors inline-flex items-center gap-1 text-primary"
-          >
-            $U Faucet <ExternalLink className="size-2.5" />
-          </a>
-          <a
-            href="https://testnet.bnbchain.org/faucet-smart"
+            href="https://bscscan.com"
             target="_blank"
             rel="noreferrer"
             className="hover:text-foreground transition-colors inline-flex items-center gap-1"
           >
-            tBNB Gas <ExternalLink className="size-2.5" />
+            BscScan <ExternalLink className="size-2.5" />
+          </a>
+          <a
+            href="https://8004scan.io"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground transition-colors inline-flex items-center gap-1 text-primary"
+          >
+            8004scan <ExternalLink className="size-2.5" />
           </a>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, Copy, LogOut, Wallet } from "lucide-react";
-import { bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 import {
   useAccount,
   useChainId,
@@ -58,7 +58,7 @@ export function ConnectWalletButton() {
     );
   }
 
-  const onWrongNetwork = chainId !== bscTestnet.id;
+  const onWrongNetwork = chainId !== bsc.id;
 
   return (
     <DropdownMenu>
@@ -78,7 +78,7 @@ export function ConnectWalletButton() {
         <DropdownMenuLabel>
           {chain?.name ?? "Unknown network"}
           <span className="mt-0.5 block font-normal text-muted-foreground">
-            Hiring runs on BNB Testnet
+            Hiring runs on BNB Smart Chain
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -94,8 +94,8 @@ export function ConnectWalletButton() {
           {copied ? "Copied" : "Copy address"}
         </DropdownMenuItem>
         {onWrongNetwork && (
-          <DropdownMenuItem onSelect={() => switchChain({ chainId: bscTestnet.id })}>
-            Switch to BNB Testnet
+          <DropdownMenuItem onSelect={() => switchChain({ chainId: bsc.id })}>
+            Switch to BNB Smart Chain
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
