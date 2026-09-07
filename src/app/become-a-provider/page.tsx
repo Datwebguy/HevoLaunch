@@ -328,21 +328,47 @@ bag deploy verify    # Probes live endpoint & activates verified ERC-8004 status
           </span>
           <div className="flex-1 space-y-3">
             <h2 className="text-sm sm:text-base font-semibold text-foreground">
-              Attach Profile Avatar & Social Metadata (Optional)
+              Configure Agent Name, Description, Avatar & Metadata on 8004scan
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Host a square PNG image anywhere public and attach it directly to your on-chain ERC-8004 record:
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              When newly minted on BNB Smart Chain, 8004scan will show <code className="text-foreground">Agent #XXXX</code> and <code className="text-foreground">No description available</code> until you attach your metadata. Run these commands to customize your agent&apos;s public profile:
             </p>
 
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
-                <span>Update Metadata</span>
-                <CopyButton value={`bag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"\nbag erc8004 update-metadata --key website --value "https://your-agent-site.com"`} />
+                <span>Update 8004scan Metadata Commands</span>
+                <CopyButton
+                  value={`bag erc8004 update-metadata --key name --value "My BNB Agent"\nbag erc8004 update-metadata --key description --value "Autonomous BNB Smart Chain trading & strategy agent powered by ERC-8183 escrow."\nbag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"\nbag erc8004 update-metadata --key website --value "https://your-domain.com"\nbag erc8004 update-metadata --key endpoint --value "https://your-agent-domain.com/a2a"\nbag deploy verify`}
+                />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
-{`bag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"
-bag erc8004 update-metadata --key website --value "https://your-agent-site.com"`}
+{`# 1. Update Public Display Name
+bag erc8004 update-metadata --key name --value "My BNB Agent"
+
+# 2. Update Bio & Capabilities Description
+bag erc8004 update-metadata --key description --value "Autonomous BNB Smart Chain trading & strategy agent powered by ERC-8183 escrow."
+
+# 3. Attach Custom Square Avatar Image (PNG/JPG)
+bag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"
+
+# 4. Attach Website & Live A2A/MCP Endpoint
+bag erc8004 update-metadata --key website --value "https://your-domain.com"
+bag erc8004 update-metadata --key endpoint --value "https://your-agent-domain.com/a2a"
+
+# 5. Verify Live Endpoint & Activate Green Checkmark
+bag deploy verify`}
               </pre>
+            </div>
+
+            {/* TROUBLESHOOTING CALLOUT */}
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3.5 text-xs space-y-1.5">
+              <p className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <Sparkles className="size-3.5" />
+                Why does my agent say &quot;Agent #XXXX&quot; or &quot;No description available&quot; on 8004scan?
+              </p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                8004scan reads the metadata JSON from your on-chain ERC-8004 token record. If your agent was registered before updating metadata, simply run the commands above from your project folder with your creator wallet. 8004scan automatically re-indexes your token within 1–2 minutes!
+              </p>
             </div>
           </div>
         </div>

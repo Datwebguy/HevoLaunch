@@ -30,6 +30,8 @@ export function getAgentBySlug(category: CategorySlug, slug: string): Agent | un
   return AGENTS.find((a) => a.category === category && a.slug === slug);
 }
 
+const enrichedAgentCache = new Map<string, { data: Agent; expiresAt: number }>();
+
 export async function enrichAgent(agent: Agent): Promise<Agent> {
   // Skip 8004scan enrichment for unregistered agents
   if (agent.agentId === 0 || agent.agentIdentityAddress === "0x0000000000000000000000000000000000000000") {
@@ -42,13 +44,20 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
     };
   }
 
+  // Fast-path: return cached enriched agent
+  const cacheKey = `${agent.category}:${agent.slug}:${agent.agentId}`;
+  const cached = enrichedAgentCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
   try {
     // For local agents, use the configured endpoint directly
     if (agent.a2aEndpoint && agent.a2aEndpoint.includes("localhost")) {
-      return {
+      const localResult: Agent = {
         ...agent,
         endpointStatus: "healthy",
-        verified: false, // Will update once 8004scan indexes it
+        verified: false,
         reputation: {
           rating: 0,
           completedJobs: 0,
@@ -56,47 +65,39 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
           reviewCount: 0,
         },
       };
+      enrichedAgentCache.set(cacheKey, { data: localResult, expiresAt: Date.now() + 60_000 });
+      return localResult;
     }
 
-    // Try to get endpoint info from Fly.io backend first
+    const agentSlug = agent.slug;
+    const targetChainId = agent.identityChainId ?? 56;
+
+    // Fetch Fly.io card and 8004scan metadata in parallel to minimize latency
+    const [flyioRes, scanRes] = await Promise.allSettled([
+      getFlyioAgentCard(agentSlug),
+      getAgent(targetChainId, String(agent.agentId)),
+    ]);
+
+    const flyioCard = flyioRes.status === "fulfilled" ? flyioRes.value : null;
+    const scan = scanRes.status === "fulfilled" ? scanRes.value : null;
+
     let flyioEndpoint: string | null = null;
     let endpointProtocol: "mcp" | "a2a" | "unknown" = "unknown";
-    let runtimeHealthy = false;
-    
-    // Use agent slug for Fly.io backend mapping
-    const agentSlug = agent.slug;
-    const flyioCard = await getFlyioAgentCard(agentSlug);
-    
+
     if (flyioCard) {
       flyioEndpoint = extractEndpointFromAgentCard(flyioCard);
-      endpointProtocol = flyioCard.protocol?.toLowerCase() as "mcp" | "a2a" | "unknown" || "unknown";
-      
-      // Check actual runtime health
-      const healthCheck = await checkAgentRuntimeHealth(agentSlug);
-      runtimeHealthy = healthCheck.status === "healthy";
-      
-      console.log(`[Fly.io] Found endpoint for ${agent.name}:`, flyioEndpoint, `Runtime healthy: ${runtimeHealthy}`);
+      endpointProtocol = (flyioCard.protocol?.toLowerCase() as "mcp" | "a2a" | "unknown") || "a2a";
     }
 
-    // Get reputation and verification from 8004scan using the correct chain
-    let scan: Awaited<ReturnType<typeof getAgent>> | null = null;
-    try {
-      scan = await getAgent(agent.identityChainId ?? 56, String(agent.agentId));
-    } catch (scanErr) {
-      console.warn(`[8004scan] lookup timed out/failed for agent ${agent.agentId}:`, scanErr);
-    }
-    
-    // Use runtime health check for endpoint status, fallback to 8004scan, default to healthy if Fly.io is live
-    const finalEndpointStatus = runtimeHealthy 
-      ? "healthy" 
-      : (scan ? scanEndpointStatus(scan) : (flyioEndpoint ? "healthy" : "unknown"));
-    
-    return {
+    const finalEndpointStatus = flyioCard
+      ? "healthy"
+      : (scan ? scanEndpointStatus(scan) : "healthy");
+
+    const enriched: Agent = {
       ...agent,
       verified: Boolean(scan?.is_verified),
       onChainName: scan?.name || agent.name,
       endpointStatus: finalEndpointStatus,
-      // Prefer Fly.io endpoint if available, otherwise use 8004scan or base config
       a2aEndpoint: flyioEndpoint || scan?.a2a_endpoint || agent.a2aEndpoint,
       endpointProtocol: flyioEndpoint ? endpointProtocol : (scan?.a2a_endpoint ? "a2a" : "a2a"),
       x402Supported: Boolean(scan?.x402_supported),
@@ -107,15 +108,20 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
         reviewCount: scan?.total_feedbacks ?? 0,
       },
     };
+
+    enrichedAgentCache.set(cacheKey, { data: enriched, expiresAt: Date.now() + 60_000 });
+    return enriched;
   } catch (error) {
     console.warn(`[Agent enrichment] Failed for ${agent.name}:`, error);
-    return { 
-      ...agent, 
-      verified: false, 
+    const fallback: Agent = {
+      ...agent,
+      verified: false,
       endpointStatus: "healthy",
       endpointProtocol: "a2a",
       x402Supported: false,
     };
+    enrichedAgentCache.set(cacheKey, { data: fallback, expiresAt: Date.now() + 30_000 });
+    return fallback;
   }
 }
 
