@@ -20,7 +20,7 @@ export const CATEGORIES: Category[] = [
     name: "Grid Trading",
     shortName: "Grid Trading",
     description:
-      "Agents that design a grid for a pair and price range — levels, order sizes, expected capture — as a plan you or your bot can execute.",
+      "Agents that design a grid for a pair and price range with levels, order sizes, and expected capture as a plan you or your bot can execute.",
     tagline: "Get a grid plan for a pair and range.",
     discoveryQuery: "grid",
   },

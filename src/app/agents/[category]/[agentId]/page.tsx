@@ -38,10 +38,10 @@ export async function generateMetadata({
   const { category: categorySlug, agentId: slug } = await params;
   const agent = getAgentBySlug(categorySlug as CategorySlug, slug);
   if (!agent) {
-    return { title: "Agent not found — HevoLaunch" };
+    return { title: "Agent not found | HevoLaunch" };
   }
   return {
-    title: `${agent.name} — HevoLaunch`,
+    title: `${agent.name} | HevoLaunch`,
     description: agent.tagline,
   };
 }

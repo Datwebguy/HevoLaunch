@@ -268,7 +268,7 @@ export function getAgentActivity(agentOrId: AgentActivityIdentifier): AgentActiv
             timestamp: new Date(t.deliveredAt || t.updatedAt || t.createdAt || Date.now()).toISOString(),
             status: isAccepted ? "COMPLETED" : isDelivered ? "SUBMITTED" : isInProgress ? "FUNDED" : "OPEN",
             deliverableSummary: t.deliverableUrl
-              ? `Deliverable: ${t.deliverableUrl}${t.deliverableNotes ? ` — ${t.deliverableNotes}` : ""}`
+              ? `Deliverable: ${t.deliverableUrl}${t.deliverableNotes ? ` (${t.deliverableNotes})` : ""}`
               : t.deliverableNotes
               ? t.deliverableNotes
               : undefined,
@@ -310,8 +310,8 @@ export function getAgentActivityStats(activities: AgentActivityItem[]): AgentAct
   return {
     totalJobsCompleted: completedJobs.length,
     totalVolumeU: Number(totalVolume.toFixed(2)),
-    avgResponseTime: activities.length > 0 ? "~25s" : "—",
-    successRate: activities.length > 0 ? "100%" : "—",
+    avgResponseTime: activities.length > 0 ? "~25s" : "N/A",
+    successRate: activities.length > 0 ? "100%" : "N/A",
   };
 }
 

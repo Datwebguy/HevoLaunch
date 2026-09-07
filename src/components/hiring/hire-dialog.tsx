@@ -553,7 +553,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
               <DialogTitle>Funding job escrow</DialogTitle>
               <DialogDescription>
                 Checking your wallet&apos;s $U balance, then creating and
-                funding the job on BNB Smart Chain — this is a real on-chain
+                funding the job on BNB Smart Chain. This is a real on-chain
                 transaction through Altana&apos;s relay.
               </DialogDescription>
             </DialogHeader>
@@ -596,12 +596,12 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   <>
                     Your hiring wallet needs a little BNB to cover gas for
                     the one on-chain step the relay doesn&apos;t sponsor
-                    (approving $U). Fund it, then try again — nothing was
+                    (approving $U). Fund it, then try again. Nothing was
                     charged.
                   </>
                 )}
                 {session.status === "UNFUNDED" && !needsGas && needsU && (
-                  "Your hiring wallet doesn't have enough $U on BNB Smart Chain to cover this job yet. Fund it, then try again — nothing was charged."
+                  "Your hiring wallet doesn't have enough $U on BNB Smart Chain to cover this job yet. Fund it, then try again. Nothing was charged."
                 )}
                 {session.status === "FAILED" &&
                   (session.error ||

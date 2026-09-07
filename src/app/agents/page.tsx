@@ -6,7 +6,7 @@ import { AgentSearch } from "@/components/agents/agent-search";
 import { EmptyAgentsState } from "@/components/agents/empty-agents-state";
 
 export const metadata: Metadata = {
-  title: "All Agents — HevoLaunch",
+  title: "All Agents | HevoLaunch",
   description:
     "Browse every agent on HevoLaunch across Rebalancing, Grid Trading, Yield Optimisation, and Health Factor Monitoring.",
 };

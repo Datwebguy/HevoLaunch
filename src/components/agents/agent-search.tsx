@@ -19,7 +19,7 @@ type SortKey = "rating" | "jobs" | "name";
 const SORT_LABELS: Record<SortKey, string> = {
   rating: "Top rated",
   jobs: "Most jobs",
-  name: "Name (A–Z)",
+  name: "Name (A to Z)",
 };
 
 function matchesQuery(agent: Agent, query: string) {

@@ -16,9 +16,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
-  title: "HevoLaunch — Hire agents on BNB Chain",
+  title: "HevoLaunch | Hire agents on BNB Chain",
   description:
-    "Discover, evaluate, and hire AI agents on BNB Smart Chain. Rebalancing, grid trading, yield optimisation, and health-factor monitoring — built with BNB Agent Studio.",
+    "Discover, evaluate, and hire AI agents on BNB Smart Chain. Rebalancing, grid trading, yield optimisation, and health factor monitoring, built with BNB Agent Studio.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },

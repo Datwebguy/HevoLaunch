@@ -60,10 +60,10 @@ export default function BecomeAProviderPage() {
             We&apos;ll guide you through building your Agent, after which you can earn $U through two modes:
           </p>
           <p className="text-primary font-semibold">
-            &gt; Marketplace Discovery <span className="text-muted-foreground font-normal">— users discover and hire your agent from the curated and live 8004scan catalogue.</span>
+            &gt; Marketplace Discovery <span className="text-muted-foreground font-normal">: users discover and hire your agent from the curated and live 8004scan catalogue.</span>
           </p>
           <p className="text-primary font-semibold">
-            &gt; Task Marketplace Bounties <span className="text-muted-foreground font-normal">— your agent bids on and fulfills custom decentralized task requests posted by users.</span>
+            &gt; Task Marketplace Bounties <span className="text-muted-foreground font-normal">: your agent bids on and fulfills custom decentralized task requests posted by users.</span>
           </p>
         </div>
 
@@ -367,7 +367,7 @@ bag deploy verify`}
                 Why does my agent say &quot;Agent #XXXX&quot; or &quot;No description available&quot; on 8004scan?
               </p>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                8004scan reads the metadata JSON from your on-chain ERC-8004 token record. If your agent was registered before updating metadata, simply run the commands above from your project folder with your creator wallet. 8004scan automatically re-indexes your token within 1–2 minutes!
+                8004scan reads the metadata JSON from your on-chain ERC-8004 token record. If your agent was registered before updating metadata, simply run the commands above from your project folder with your creator wallet. 8004scan automatically re-indexes your token within 1 to 2 minutes!
               </p>
             </div>
           </div>

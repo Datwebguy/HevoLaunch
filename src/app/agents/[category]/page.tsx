@@ -43,7 +43,7 @@ export async function generateMetadata({
   if (!category) return {};
 
   return {
-    title: `${category.name} Agents — HevoLaunch`,
+    title: `${category.name} Agents | HevoLaunch`,
     description: category.description,
   };
 }
@@ -92,7 +92,7 @@ export default async function CategoryPage({
       {live.failed ? (
         <section className="mt-12 rounded-lg border border-border bg-card px-4 py-10 text-sm text-muted-foreground">
           Could not reach 8004scan just now. Hire-ready listings above are
-          unaffected — retry this page in a minute for the live registry.
+          unaffected. Retry this page in a minute for the live registry.
         </section>
       ) : (
         <section className="mt-16">
@@ -108,11 +108,8 @@ export default async function CategoryPage({
             </span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real agents registered on mainnet — not just this category&apos;s
-            default preview, search all {live.total.toLocaleString()} of
-            them directly. Reputation here is still building — this whole
-            ecosystem is brand new — and hiring these directly isn&apos;t
-            wired up yet, so treat this as discovery, not a listing.
+            Real agents registered on mainnet. Search all {live.total.toLocaleString()} of
+            them directly from the decentralized registry.
           </p>
 
           <form method="GET" className="relative mt-4 max-w-sm">

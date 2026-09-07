@@ -24,7 +24,7 @@ export const AgentCard = memo(function AgentCard({
   const category = CATEGORY_MAP[agent.category];
   const scoreLabel =
     agent.reputation.reviewCount === 0 && agent.reputation.rating === 0
-      ? "—"
+      ? "N/A"
       : agent.reputation.rating.toFixed(1);
 
   return (

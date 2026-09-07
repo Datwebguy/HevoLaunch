@@ -41,7 +41,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
     name: "Hevo Rebalance",
     tagline: "Reads your portfolio and tells you exactly what to trade.",
     description:
-      "Reads a wallet's current holdings against a target allocation and returns the exact trade set needed to close the drift — tokens to sell, tokens to buy, and the resulting allocation. It analyses and recommends; it never executes a trade itself.",
+      "Reads a wallet's current holdings against a target allocation and returns the exact trade set needed to close the drift, including tokens to sell, tokens to buy, and the resulting allocation. It analyses and recommends, it never executes a trade itself.",
     capabilities: ["Portfolio drift analysis", "Target-weight recommendations", "Read-only, no custody"],
     pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per analysis" },
     agentIdentityAddress: "0x06F757064043e57dBbCCD6D95Ee1113D9796c715",
@@ -52,7 +52,7 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
     name: "Hevo Grid",
     tagline: "Designs optimized grid parameters and volatility capture targets.",
     description:
-      "Computes a grid trading plan for a pair and price range — levels, order sizes, and expected capture — as a deliverable a buyer (or their own bot) can execute. It designs the grid; it does not place live orders itself.",
+      "Computes a grid trading plan for a pair and price range covering levels, order sizes, and expected capture as a deliverable a buyer (or their own bot) can execute. It designs the grid; it does not place live orders itself.",
     capabilities: [
       "Grid trading plan generation",
       "Volatility capture estimation",

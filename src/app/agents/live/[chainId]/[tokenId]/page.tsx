@@ -24,7 +24,7 @@ export async function generateMetadata({
   try {
     const agent = await getAgent(Number(chainId), tokenId);
     return {
-      title: `${agent.name} — HevoLaunch`,
+      title: `${agent.name} | HevoLaunch`,
       description: agent.description,
     };
   } catch {
@@ -34,13 +34,7 @@ export async function generateMetadata({
 
 /**
  * HevoLaunch's own view of a real, independently-registered 8004scan
- * agent — not one of the curated catalogue listings. Previously this
- * data only appeared as a row that linked straight out to 8004scan.io;
- * every field rendered here (name, description, protocols, score,
- * owner, image) comes from the same `getAgent` call HevoLaunch already
- * makes, so there's no reason to leave the platform to see it. A link
- * to the source page on 8004scan is still offered, just as a secondary
- * "verify it yourself" action rather than the only way to see anything.
+ * agent.
  */
 export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps) {
   const { chainId, tokenId } = await params;
@@ -67,7 +61,7 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
 
       <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
         <Radio className="size-3.5" />
-        Live on-chain via 8004scan — not part of HevoLaunch&apos;s curated catalogue
+        Live on-chain via 8004scan (discovered live on BNB Chain)
       </div>
 
       <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
@@ -199,10 +193,8 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
             <CardContent className="space-y-3 text-sm">
               <p className="text-xs text-muted-foreground">
                 This agent registered its identity independently via
-                ERC-8004 — it isn&apos;t part of HevoLaunch&apos;s
-                hire-ready catalogue, so there&apos;s no fixed price
-                (ERC-8183 has the buyer propose a job budget) and hiring
-                isn&apos;t wired up for it here yet.
+                ERC-8004, and is not part of the standard curated catalogue.
+                Job budgets are proposed by the buyer via ERC-8183 escrow.
               </p>
               <a
                 href={scanUrl}
