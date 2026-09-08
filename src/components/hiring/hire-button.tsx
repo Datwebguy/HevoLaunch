@@ -8,6 +8,6 @@ import { HireDialog } from "@/components/hiring/hire-dialog";
  * connect-a-wallet step before the one that actually matters; the passkey
  * wallet is created inline, at the point hiring actually needs it.
  */
-export function HireButton({ agent }: { agent: Agent }) {
-  return <HireDialog agent={agent} />;
+export function HireButton({ agent, className }: { agent: Agent; className?: string }) {
+  return <HireDialog agent={agent} className={className} />;
 }

@@ -25,7 +25,7 @@ export default async function AllAgentsPage() {
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           {agents.length === 0
             ? `${CATEGORIES.length} categories, no hire-ready agents yet. Live on-chain registrations still show on each category page.`
-            : `${agents.length} hire-ready agent${agents.length === 1 ? "" : "s"} across ${CATEGORIES.length} categories. Built with BNB Agent Studio, identified on-chain via ERC-8004. Scores from 8004scan.`}
+            : `${agents.length} hire-ready and qualified agent${agents.length === 1 ? "" : "s"} across ${CATEGORIES.length} categories. Verified on BNB Smart Chain via ERC-8004 with Altana $U escrow.`}
         </p>
       </div>
 

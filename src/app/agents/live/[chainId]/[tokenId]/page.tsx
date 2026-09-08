@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, ExternalLink, Radio } from "lucide-react";
 
 import { getAgent, scanAgentUrl } from "@/lib/8004scan";
-import { relativeTimeFrom } from "@/lib/live-agents";
+import { relativeTimeFrom, scanAgentToAgent } from "@/lib/live-agents";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CopyButton } from "@/components/ui/copy-button";
+import { HireButton } from "@/components/hiring/hire-button";
+import { Separator } from "@/components/ui/separator";
 
 function truncateAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -189,12 +191,47 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
         </div>
 
         <aside>
-          <Card>
-            <CardContent className="space-y-3 text-sm">
-              <p className="text-xs text-muted-foreground">
-                This agent registered its identity independently via
-                ERC-8004, and is not part of the standard curated catalogue.
-                Job budgets are proposed by the buyer via ERC-8183 escrow.
+          <Card className="sticky top-20">
+            <CardContent className="space-y-4 p-5">
+              <div className="space-y-1">
+                <span className="text-[11px] uppercase tracking-wider font-mono text-primary font-semibold">
+                  Autonomous Hire
+                </span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-mono text-2xl font-bold text-foreground">0.05</span>
+                  <span className="font-mono text-sm text-muted-foreground">$U</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Propose a custom task and lock $U escrow via Altana ERC-8183.
+                </p>
+              </div>
+
+              <HireButton agent={scanAgentToAgent(agent)} className="w-full" />
+
+              <Separator />
+
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <span>Escrow standard</span>
+                  <span className="font-mono text-foreground">Altana ERC-8183</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Settlement currency</span>
+                  <span className="font-mono text-foreground">$U (United Stables)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Endpoint</span>
+                  <span className="font-mono text-foreground truncate max-w-[120px]">
+                    {agent.a2a_endpoint ? "A2A Connected" : "On-chain record"}
+                  </span>
+                </div>
+              </div>
+
+              <Separator />
+
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                This agent registered its identity on BNB Smart Chain via ERC-8004.
+                Escrow settles on-chain once the deliverable is submitted.
               </p>
               <a
                 href={scanUrl}

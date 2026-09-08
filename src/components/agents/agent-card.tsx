@@ -27,9 +27,13 @@ export const AgentCard = memo(function AgentCard({
       ? "N/A"
       : agent.reputation.rating.toFixed(1);
 
+  const href = agent.id.startsWith("live-")
+    ? `/agents/live/${agent.identityChainId || 56}/${agent.agentId}`
+    : `/agents/${agent.category}/${agent.slug}`;
+
   return (
     <Link
-      href={`/agents/${agent.category}/${agent.slug}`}
+      href={href}
       className={cn(
         "market-row px-3 py-3 hover:bg-muted",
         !flush && "rounded-lg border border-border bg-card"
@@ -46,6 +50,15 @@ export const AgentCard = memo(function AgentCard({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-sm font-medium text-foreground">{agent.name}</h3>
+          {agent.featured ? (
+            <span className="rounded bg-primary/15 text-primary text-[10px] font-medium px-1.5 py-0.2">
+              Flagship
+            </span>
+          ) : (
+            <span className="rounded bg-muted text-muted-foreground text-[10px] font-mono px-1.5 py-0.2">
+              #{agent.agentId}
+            </span>
+          )}
           {agent.verified && (
             <BadgeCheck className="size-3.5 shrink-0 text-success" aria-label="Verified agent" />
           )}

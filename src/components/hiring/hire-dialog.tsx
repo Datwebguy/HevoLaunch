@@ -58,7 +58,13 @@ function truncate(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-export function HireDialog({ agent }: { agent: Agent }) {
+export function HireDialog({
+  agent,
+  className,
+}: {
+  agent: Agent;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("wallet");
   const [wallet, setWallet] = useState<StoredHiringWallet | null>(null);
@@ -283,7 +289,9 @@ export function HireDialog({ agent }: { agent: Agent }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg">Hire agent</Button>
+        <Button size="lg" className={className}>
+          Hire agent
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         {stage === "wallet" && (

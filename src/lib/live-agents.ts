@@ -1,6 +1,6 @@
-import { listAgents, type ScanAgent } from "@/lib/8004scan";
+import { listAgents, scanEndpointStatus, type ScanAgent } from "@/lib/8004scan";
 import { filterQualifiedAgents } from "@/lib/agent-quality";
-import type { Category } from "@/lib/types";
+import type { Agent, Category, CategorySlug } from "@/lib/types";
 
 /**
  * Server-side live-data layer for category pages — real agents registered
@@ -67,4 +67,42 @@ export function relativeTimeFrom(isoDate: string): string {
   const diffDays = Math.round(diffHours / 24);
   if (diffDays < 30) return `${diffDays}d ago`;
   return `${Math.round(diffDays / 30)}mo ago`;
+}
+
+export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): Agent {
+  return {
+    id: `live-${scan.chain_id}-${scan.token_id}`,
+    slug: `live-${scan.token_id}`,
+    name: scan.name,
+    category: categorySlug || "rebalancing",
+    tagline: scan.description ? scan.description.slice(0, 110).trim() : "Autonomous AI agent registered on BNB Smart Chain",
+    description: scan.description || "",
+    avatarColor: "#F0B90B",
+    agentId: Number(scan.token_id),
+    agentIdentityAddress: (scan.owner_address || "0x0000000000000000000000000000000000000000") as `0x${string}`,
+    identityChainId: scan.chain_id,
+    chain: "BNB Smart Chain",
+    builtWith: "BNB Agent Studio",
+    reputation: {
+      rating: scan.total_score,
+      completedJobs: 0,
+      successRate: 0,
+      reviewCount: scan.total_feedbacks,
+    },
+    pricing: {
+      model: "per-task",
+      amount: 0.05,
+      currency: "$U",
+      cadence: "per task",
+    },
+    capabilities: scan.supported_protocols && scan.supported_protocols.length > 0
+      ? scan.supported_protocols
+      : ["Autonomous execution", "On-chain verification"],
+    verified: scan.is_verified,
+    featured: false,
+    endpointStatus: scanEndpointStatus(scan),
+    a2aEndpoint: scan.a2a_endpoint || null,
+    endpointProtocol: scan.a2a_endpoint ? "a2a" : "unknown",
+    x402Supported: scan.x402_supported,
+  };
 }

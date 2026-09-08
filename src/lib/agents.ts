@@ -1,7 +1,8 @@
 import type { Agent, Category, CategorySlug } from "@/lib/types";
+import { CATEGORIES } from "@/lib/categories";
 import { getAgentsForAllCategories } from "@/lib/deployed-agents";
 import { getAgent, scanEndpointStatus } from "@/lib/8004scan";
-import { getLiveAgentsForCategory, type LiveAgentsResult } from "@/lib/live-agents";
+import { getLiveAgentsForCategory, scanAgentToAgent, type LiveAgentsResult } from "@/lib/live-agents";
 import {
   getFlyioAgentCard,
   extractEndpointFromAgentCard,
@@ -126,7 +127,27 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
 }
 
 export async function getCatalogue(): Promise<Agent[]> {
-  return Promise.all(AGENTS.map(enrichAgent));
+  const curated = await Promise.all(AGENTS.map(enrichAgent));
+  try {
+    const liveResults = await Promise.all(
+      CATEGORIES.map((cat) => getLiveAgentsForCategory(cat))
+    );
+    const communityAgents: Agent[] = [];
+    for (let i = 0; i < CATEGORIES.length; i++) {
+      const cat = CATEGORIES[i];
+      const live = liveResults[i];
+      if (live && live.agents) {
+        for (const scan of live.agents) {
+          // Avoid duplicates with our curated flagship agents
+          if (curated.some((c) => c.agentId === Number(scan.token_id))) continue;
+          communityAgents.push(scanAgentToAgent(scan, cat.slug));
+        }
+      }
+    }
+    return [...curated, ...communityAgents];
+  } catch {
+    return curated;
+  }
 }
 
 export interface CategoryShelf {
@@ -136,14 +157,13 @@ export interface CategoryShelf {
 }
 
 /**
- * Homepage shelf per category: hire-ready agents if any, otherwise a
- * live 8004scan preview so every mandatory category has equal visible
- * depth without fabricating listings.
+ * Homepage shelf per category: returns hire-ready flagship agents
+ * alongside qualified community agents from the decentralized registry.
  */
 export async function getCategoryShelf(category: Category): Promise<CategoryShelf> {
-  const curated = await Promise.all(getAgentsByCategory(category.slug).map(enrichAgent));
-  if (curated.length > 0) {
-    return { category, curated, live: null };
-  }
-  return { category, curated, live: await getLiveAgentsForCategory(category) };
+  const [curated, live] = await Promise.all([
+    Promise.all(getAgentsByCategory(category.slug).map(enrichAgent)),
+    getLiveAgentsForCategory(category),
+  ]);
+  return { category, curated, live };
 }
