@@ -132,7 +132,7 @@ export async function fetchLiveWalletAudit(targetAddress: string): Promise<Audit
 
   const client = createPublicClient({
     chain: bsc,
-    transport: http("https://bsc-rpc.publicnode.com", {
+    transport: http("https://bsc-dataseed.binance.org", {
       timeout: 10_000,
     }),
   });
@@ -254,7 +254,7 @@ export function buildDynamicDeliverable(
     for (let i = 1; i <= gridCount / 2; i++) {
       const buyPrice = (referenceBnbPrice - i * stepSize * 0.9).toFixed(2);
       const sellPrice = (referenceBnbPrice + i * stepSize * 0.9).toFixed(2);
-      buyTiers.push(`$${buyPrice} (${bnbPerTier.toFixed(4)} tBNB)`);
+      buyTiers.push(`$${buyPrice} (${bnbPerTier.toFixed(4)} BNB)`);
       sellTiers.push(`$${sellPrice} (${uPerTier.toFixed(2)} $U)`);
     }
 

@@ -1,6 +1,6 @@
 # HevoLaunch Agent Deployment Guide
 
-This guide will help you deploy your 4 Hevo agents to BNB Testnet (97) and register them on 8004scan for the BNB Chain hackathon "The Smart Money Era".
+This guide will help you deploy your 4 Hevo agents to BNB Smart Chain Mainnet (56) and register them on 8004scan for the BNB Chain hackathon "The Smart Money Era".
 
 ## Pricing Configuration
 
@@ -19,7 +19,7 @@ pip install bnbagent-studio
 mkdir hevo-agents
 cd hevo-agents
 
-# Initialize the workspace
+# Initialize the workspace. Select BNB Smart Chain Mainnet when prompted.
 bag init
 ```
 
@@ -105,7 +105,8 @@ max_price = "100000000000000000"  # 0.1 $U max
 
 ## Step 5: Update HevoLaunch Configuration
 
-After deploying all 4 agents, update `src/lib/deployed-agents.ts` with the real values:
+After deploying an agent, update `src/lib/deployed-agents.ts` with its real
+mainnet values. Do not copy token IDs or addresses from a testnet deployment:
 
 ```typescript
 {
@@ -122,20 +123,21 @@ Do this for all 4 agents.
 ## Step 6: Verify on 8004scan
 
 Check each agent on 8004scan:
-- https://8004scan.io/agents/97/YOUR_AGENT_ID
+- https://8004scan.io/agents/bsc/YOUR_AGENT_ID
 
 You should see:
 - Agent name and description
 - ERC-8004 registration details
 - Endpoint information (if deployed)
 - Reputation data (will start at 0)
+- BNB Smart Chain Mainnet / chain ID 56
 
 ## Important Notes
 
-- **Testnet Only**: This is for BNB Testnet (97) - no real money required
-- **Free Testnet BNB**: Get tBNB from https://testnet.bnbchain.org/faucet-smart
-- **Free Testnet $U**: Get $U from https://united-coin-u.github.io/u-faucet/
-- **No Real Costs**: Testnet has no financial risk
+- **Mainnet**: This deployment uses BNB Smart Chain (56) and real transaction fees.
+- **Gas**: Fund the deployment wallet with BNB before deploying or registering.
+- **Payment currency**: Use the mainnet `$U` token from the Altana SDK and never
+  reuse the testnet token address.
 - **Reputation**: Starts at 0, builds up with actual usage
 - **Security**: Keep your agent private keys secure
 - **Maintenance**: Monitor agent uptime and update as needed
@@ -143,13 +145,14 @@ You should see:
 ## Troubleshooting
 
 ### Agent Registration Fails
-- Ensure you have enough tBNB for gas
+- Ensure you have enough BNB for gas
 - Check your wallet connection
 - Verify BNB Agent Studio is properly installed
 
 ### 8004scan Not Showing Agent
 - Wait a few minutes for indexing
-- Check if the agent ID is correct
+- Check that the agent was registered on chain 56, not chain 97
+- Check that the agent ID and identity address are correct
 - Verify the registration transaction went through
 
 ### Endpoint Calls Fail
@@ -159,7 +162,7 @@ You should see:
 
 ## Next Steps
 
-After deployment:
+After mainnet deployment:
 1. Monitor agent performance and reputation
 2. Gather user feedback
 3. Improve agent capabilities

@@ -27,7 +27,7 @@ export function getFeaturedAgents(): Agent[] {
 }
 
 export function getAgentBySlug(category: CategorySlug, slug: string): Agent | undefined {
-  return AGENTS.find((a) => a.category === category && a.slug === slug);
+  return AGENTS.find((a) => a.category === category && (a.slug === slug || String(a.agentId) === slug));
 }
 
 const enrichedAgentCache = new Map<string, { data: Agent; expiresAt: number }>();
@@ -56,7 +56,7 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
     if (agent.a2aEndpoint && agent.a2aEndpoint.includes("localhost")) {
       const localResult: Agent = {
         ...agent,
-        endpointStatus: "healthy",
+        endpointStatus: "unknown",
         verified: false,
         reputation: {
           rating: 0,
@@ -116,7 +116,7 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
     const fallback: Agent = {
       ...agent,
       verified: false,
-      endpointStatus: "healthy",
+      endpointStatus: "unknown",
       endpointProtocol: "a2a",
       x402Supported: false,
     };

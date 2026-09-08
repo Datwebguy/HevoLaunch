@@ -1,18 +1,15 @@
 import { parseEther, parseUnits } from "viem";
-import { generatePrivateKey } from "viem/accounts";
 
 import type { Agent, HireSession } from "@/lib/types";
 
 import {
   createClient,
   BNB,
-  ERC8183_ADDRESSES,
   erc8183Addresses,
   getErc8183DeliverableUrl,
   getErc8183Job,
   hireErc8183Agent,
   signerFromPasskey,
-  signerFromPrivateKey,
   type PasskeyCredential,
   type Signer,
 } from "@altananetwork/sdk";
@@ -27,9 +24,8 @@ const PAYMENT_TOKEN = PAYMENT_TOKEN_ADDRESS;
 
 export interface StoredHiringWallet {
   address: `0x${string}`;
-  credential?: PasskeyCredential;
-  privateKey?: `0x${string}`;
-  type?: "passkey" | "instant";
+  credential: PasskeyCredential;
+  type?: "passkey";
 }
 
 let client: ReturnType<typeof createClient> | null = null;
@@ -61,15 +57,26 @@ export function getStoredHiringWallet(account?: string): StoredHiringWallet | nu
   try {
     const key = getWalletStorageKey(account);
     const raw = window.localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as StoredHiringWallet;
+    if (raw) {
+      const parsed = JSON.parse(raw) as StoredHiringWallet & { privateKey?: string };
+      if (parsed.privateKey || !parsed.credential) {
+        window.localStorage.removeItem(key);
+        return null;
+      }
+      return parsed;
+    }
 
     // Fallback: If no account-specific wallet found, check legacy global key
     const legacyRaw = window.localStorage.getItem(WALLET_STORAGE_KEY);
     if (legacyRaw) {
-      const parsed = JSON.parse(legacyRaw) as StoredHiringWallet;
-      if (account && parsed) {
-        window.localStorage.setItem(key, legacyRaw);
+      const parsed = JSON.parse(legacyRaw) as StoredHiringWallet & { privateKey?: string };
+      if (parsed.privateKey) {
+        window.localStorage.removeItem(WALLET_STORAGE_KEY);
+        window.localStorage.removeItem(key);
+        return null;
       }
+      if (!parsed.credential) return null;
+      if (account) window.localStorage.setItem(key, legacyRaw);
       return parsed;
     }
     return null;
@@ -113,7 +120,7 @@ function formatPasskeyError(err: unknown, action: "create" | "recover"): string 
     lower.includes("timed out") ||
     lower.includes("abort")
   ) {
-    return "Passkey prompt was cancelled or timed out. You can also use the 1-Click Instant Smart Account.";
+    return "Passkey prompt was cancelled or timed out. Try again, or restore an existing hiring wallet.";
   }
   if (
     lower.includes("no passkey") ||
@@ -121,43 +128,15 @@ function formatPasskeyError(err: unknown, action: "create" | "recover"): string 
     lower.includes("no keys registered") ||
     lower.includes("unknown account")
   ) {
-    return "No existing passkey for HevoLaunch was found on this device. Click 'Create 1-Click Smart Account' to get started instantly.";
+    return "No hiring-wallet passkey for HevoLaunch was found on this device. Create one with Windows Hello, Touch ID, or a security key.";
   }
   if (lower.includes("invalidstateerror")) {
-    return "A passkey is already registered or the session state was invalid. Click 'Create 1-Click Smart Account' to continue.";
+    return "A passkey is already registered or the session state was invalid. Restore the existing hiring wallet, or create a new one.";
   }
   if (lower.includes("notsupportederror") || lower.includes("not supported")) {
-    return "Passkeys are not supported on this browser or platform. The 1-Click Instant Smart Account is recommended.";
+    return "Passkeys are not supported in this browser. Use a current Chrome, Edge, or Safari build.";
   }
   return msg;
-}
-
-/**
- * Creates an instant 1-click hiring smart account backed by a local private key
- * signer. Upgrades via EIP-7702 on the Altana relay. Zero browser prompts or Google
- * login interruptions — 100% reliable on every device.
- */
-export async function createInstantHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
-  clearStoredHiringWallet(account);
-  try {
-    const pk = generatePrivateKey();
-    const signer = signerFromPrivateKey(pk);
-    const altana = getAltanaClient();
-    const result = await altana.createWallet({ signer });
-    const stored: StoredHiringWallet = {
-      address: result.address,
-      privateKey: pk,
-      type: "instant",
-    };
-    persistHiringWallet(stored, account);
-    return { ok: true, wallet: stored, signer: result.signer };
-  } catch (err) {
-    console.error("[altana] Instant wallet creation failed:", err);
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Failed to initialize smart account.",
-    };
-  }
 }
 
 /**
@@ -186,30 +165,25 @@ export async function createFreshPasskeyWallet(account?: string): Promise<Create
 
 /**
  * Creates or loads the browser's Altana hiring wallet.
- * If an existing wallet is found in localStorage, rehydrates its signer.
- * Otherwise creates a fresh 1-click instant smart account.
+ * Only a passkey credential is accepted. A leftover localStorage private
+ * key from an earlier build is wiped, not reused.
  */
 export async function createOrLoadHiringWallet(account?: string): Promise<CreateHiringWalletResult> {
   const existing = getStoredHiringWallet(account);
-  if (existing) {
+  if (existing?.credential) {
     try {
-      if (existing.privateKey) {
-        const signer = signerFromPrivateKey(existing.privateKey);
-        return { ok: true, wallet: existing, signer };
-      }
-      if (existing.credential) {
-        const signer = signerFromPasskey(existing.credential);
-        return { ok: true, wallet: existing, signer };
-      }
+      return { ok: true, wallet: existing, signer: signerFromPasskey(existing.credential) };
     } catch (err) {
       console.warn("[altana] Failed to load existing wallet:", err);
     }
   }
-
-  return createInstantHiringWallet(account);
+  return {
+    ok: false,
+    error: "No hiring wallet on this device yet. Create one with a passkey.",
+  };
 }
 
-export const createFreshHiringWallet = createInstantHiringWallet;
+export const createFreshHiringWallet = createFreshPasskeyWallet;
 
 /**
  * Recovers a passkey-backed hiring wallet from on-chain KeyStore data.
@@ -273,12 +247,9 @@ export function buildHireSession(
 }
 
 /**
- * Minimum native tBNB the hiring wallet needs. The relay sponsors the
- * ERC-8183 kernel writes themselves, but NOT the ERC-20 `approve` call
- * `fund` sends when the token allowance is too low (typically just the
- * first fund) — confirmed against bnbagent-studio's own buyer-prerequisite
- * docs ("Wallet has ≥ 0.05 tBNB (gas)..."). A wallet with plenty of $U but
- * zero tBNB fails this exact step with an unhelpful bare on-chain revert.
+ * Minimum native BNB the hiring wallet needs on mainnet. The relay
+ * sponsors the ERC-8183 kernel writes, but not the ERC-20 `approve`
+ * when allowance is missing.
  */
 const MIN_GAS_WEI = parseEther("0.002");
 
@@ -290,7 +261,7 @@ export interface FundingCheck {
   hasGas: boolean;
 }
 
-/** Reads the wallet's real on-chain $U and tBNB balances before attempting to fund a job. */
+/** Reads the wallet's real on-chain $U and BNB balances before attempting to fund a job. */
 export async function checkFunding(
   wallet: StoredHiringWallet,
   requiredRaw: bigint
@@ -360,38 +331,6 @@ export async function fundHireSession(
       error: undefined,
       updatedAt: Date.now(),
     };
-
-    // Asynchronously notify the agent runtime over A2A
-    try {
-      const slug = session.agentSlug || session.agentCategory || "rebalance";
-      const route = slug.toLowerCase().includes("grid")
-        ? "grid"
-        : slug.toLowerCase().includes("yield")
-          ? "yield"
-          : slug.toLowerCase().includes("sentinel") || slug.toLowerCase().includes("health")
-            ? "sentinel"
-            : "rebalance";
-
-      fetch(`https://hevo-agents.fly.dev/${route}/a2a`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: Date.now(),
-          method: "message/send",
-          params: {
-            data: {
-              skill: "notify_funded",
-              job_id: Number(result.jobId),
-              task: session.task,
-              hirer: wallet.address,
-            },
-          },
-        }),
-      }).catch((e) => console.warn("[A2A notify_funded] warning:", e));
-    } catch {
-      // Non-blocking notification
-    }
 
     onUpdate(funded);
     return funded;

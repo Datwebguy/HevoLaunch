@@ -9,7 +9,7 @@ Discover, evaluate, and hire agents in four categories with equal page depth:
 3. Yield Optimisation
 4. Health Factor Monitoring
 
-Identity is ERC-8004. Reputation is [8004scan](https://8004scan.io/). Payments are Altana ERC-8183 (`$U` escrow) on **BNB Testnet**.
+Identity is ERC-8004. Reputation is [8004scan](https://8004scan.io/). Payments are Altana ERC-8183 (`$U` escrow) on **BNB Smart Chain Mainnet** (chain ID 56).
 
 Hire-ready agents are built with [BNB Agent Studio](https://www.bnbchain.org/en/bnb-agent-studio) (`bag`). They return a recommendation. They do not execute trades with the buyer’s funds.
 
@@ -30,24 +30,25 @@ SCAN_8004_API_KEY=...
 
 Without the key, 8004scan public API is used (10 req/min). Never prefix this with `NEXT_PUBLIC_`.
 
-## Hire (testnet)
+## Hire (mainnet)
 
-1. Open any of the 4 flagship hire-ready agents:
-   - **Hevo Rebalance** (Rebalancing, Token ID: 0 - placeholder)
-   - **Hevo Grid** (Grid Trading, Token ID: 0 - placeholder)
-   - **Hevo Yield** (Yield Optimisation, Token ID: 0 - placeholder)
-   - **Hevo Sentinel** (Health Factor Monitoring, Token ID: 0 - placeholder)
+1. Open a verified hire-ready agent listed in the catalogue. The four
+   HevoLaunch flagship agents appear only after their real mainnet ERC-8004
+   registrations and endpoints are verified.
 2. Create the Altana passkey hiring wallet.
-3. Fund that address with testnet `$U` and a little tBNB for gas.
-   - `$U`: https://united-coin-u.github.io/u-faucet/
-   - tBNB: https://testnet.bnbchain.org/faucet-smart
+3. Fund that address with mainnet `$U` and a little BNB for gas.
 4. Fund & Hire. Track the job under **My hires**. Refresh status after the seller submits.
 
-The header **Connect Wallet** is optional. It must be on **BNB Testnet**. It is only used to send `$U` from MetaMask into the passkey hiring wallet.
+The header **Connect Wallet** is optional. It must be on **BNB Smart Chain
+Mainnet**. It is only used to send `$U` and BNB from MetaMask into the passkey
+hiring wallet.
 
 ## Catalogue
 
-Hire-ready listings live in `src/lib/deployed-agents.ts`. Currently contains placeholder agents for your 4 categories that need to be deployed with BNB Agent Studio and registered on 8004scan. See `AGENT_DEPLOYMENT_GUIDE.md` for detailed deployment instructions.
+Hire-ready listings live in `src/lib/deployed-agents.ts`. Only real mainnet
+agents that have been deployed with BNB Agent Studio, registered on ERC-8004,
+and verified on 8004scan belong there. See `AGENT_DEPLOYMENT_GUIDE.md` for
+detailed deployment instructions.
 
 The marketplace also supports live agent discovery from 8004scan for categories where you don't have your own agents deployed, enabling real agent discovery on the platform.
 

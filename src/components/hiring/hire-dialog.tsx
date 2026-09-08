@@ -27,7 +27,6 @@ import {
   checkFunding,
   clearStoredHiringWallet,
   createFreshPasskeyWallet,
-  createInstantHiringWallet,
   createOrLoadHiringWallet,
   explorerTxUrl,
   fundHireSession,
@@ -187,23 +186,6 @@ export function HireDialog({ agent }: { agent: Agent }) {
     setWalletError(null);
   }
 
-  async function handleCreateInstantWallet() {
-    setConnecting(true);
-    setWalletError(null);
-    const result = await createInstantHiringWallet(connectedAddress);
-    setConnecting(false);
-    if (result.ok) {
-      setWallet(result.wallet);
-      setSigner(result.signer);
-      setStage("review");
-      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
-        .then((check) => setFundingCheck(check))
-        .catch(() => {});
-    } else {
-      setWalletError(result.error);
-    }
-  }
-
   async function handleCreatePasskeyWallet() {
     setConnecting(true);
     setWalletError(null);
@@ -241,7 +223,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
   async function handleResetAndCreateFreshWallet() {
     setConnecting(true);
     setWalletError(null);
-    const result = await createInstantHiringWallet(connectedAddress);
+    const result = await createFreshPasskeyWallet(connectedAddress);
     setConnecting(false);
     if (result.ok) {
       setWallet(result.wallet);
@@ -312,8 +294,9 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 <span>Initialize Hiring Smart Account</span>
               </DialogTitle>
               <DialogDescription>
-                Hiring runs non-custodially on BNB Smart Chain via Altana ERC-8183 escrow.
-                Creates an instant smart account to sign escrow intents with 0 gas and 0 seed phrases.
+                Hiring runs on BNB Smart Chain mainnet through Altana ERC-8183.
+                Escrow is $U (United Stables). The hiring wallet is a passkey
+                smart account, and the key never leaves this device.
               </DialogDescription>
             </DialogHeader>
 
@@ -330,48 +313,41 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   size="sm"
                   variant="outline"
                   className="w-full text-xs mt-1 bg-background/60 hover:bg-background"
-                  onClick={handleCreateInstantWallet}
+                  onClick={handleCreatePasskeyWallet}
                   disabled={connecting}
                 >
                   {connecting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : null}
-                  Create 1-Click Smart Account Now
+                  Create hiring wallet
                 </Button>
               </Alert>
             )}
 
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/50 p-3.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2 font-medium text-foreground">
-                <CheckCircle2 className="size-4 text-emerald-500" />
-                <span>Instant 1-Click Setup</span>
+                <Fingerprint className="size-4 text-primary" />
+                <span>Passkey hiring wallet</span>
               </div>
               <p>
-                Clicking <strong>&quot;Create 1-Click Smart Account&quot;</strong> sets up your non-custodial smart account in seconds without browser sign-in prompts or seed phrases.
+                Your device will prompt for Windows Hello, Touch ID, or a
+                security key. That credential signs the $U escrow. We do not
+                store a private key in this browser.
               </p>
             </div>
 
             <DialogFooter className="flex-col gap-2 sm:flex-col pt-1">
               <Button
-                onClick={handleCreateInstantWallet}
+                onClick={handleCreatePasskeyWallet}
                 disabled={connecting || recovering}
                 className="w-full font-medium"
               >
                 {connecting ? (
                   <>
                     <Loader2 className="size-4 animate-spin mr-2" />
-                    <span>Initializing smart account...</span>
+                    <span>Waiting for passkey...</span>
                   </>
                 ) : (
-                  <span>Create 1-Click Smart Account (Instant)</span>
+                  <span>Create hiring wallet</span>
                 )}
-              </Button>
-              <Button
-                onClick={handleCreatePasskeyWallet}
-                disabled={connecting || recovering}
-                variant="outline"
-                className="w-full text-xs"
-              >
-                <Fingerprint className="size-3.5 mr-1.5 text-primary" />
-                <span>Or use Hardware Passkey (Windows Hello / Touch ID)</span>
               </Button>
               <Button
                 onClick={handleRecoverWallet}
@@ -449,7 +425,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   <div className="flex items-center gap-1.5">
                     <span className="text-muted-foreground font-medium">Hiring Smart Account</span>
                     <span className="rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium px-1.5 py-0.5">
-                      {wallet.type === "passkey" ? "Passkey Linked" : "1-Click Smart Account"}
+                      Passkey
                     </span>
                   </div>
                   <span className="flex items-center gap-1.5 font-mono text-xs text-foreground">
@@ -459,7 +435,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                 </div>
                 <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border/50 text-muted-foreground">
                   <span>
-                    {wallet.type === "passkey" ? "Biometric prompt at funding" : "Non-custodial smart execution"}
+                    Passkey prompt at funding
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -488,7 +464,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground font-medium">Smart Account Balance</span>
                     <span className="font-mono text-[11px] text-foreground">
-                      {formatUnits(fundingCheck.balanceRaw, 18).slice(0, 6)} $U • {formatUnits(fundingCheck.nativeBalanceRaw, 18).slice(0, 6)} tBNB
+                      {formatUnits(fundingCheck.balanceRaw, 18).slice(0, 6)} $U • {formatUnits(fundingCheck.nativeBalanceRaw, 18).slice(0, 6)} BNB
                     </span>
                   </div>
 
@@ -526,7 +502,7 @@ export function HireDialog({ agent }: { agent: Agent }) {
                             disabled={sending || sendingGas || confirmingSend}
                           >
                             <span>
-                              {sendingGas ? "Confirm tBNB in wallet..." : confirmingSend ? "Sending tBNB..." : "Deposit 0.01 tBNB Gas from MetaMask"}
+                              {sendingGas ? "Confirm BNB in wallet..." : confirmingSend ? "Sending BNB..." : "Deposit 0.01 BNB gas from MetaMask"}
                             </span>
                             <ArrowRight className="size-3" />
                           </Button>
@@ -674,10 +650,10 @@ export function HireDialog({ agent }: { agent: Agent }) {
                         >
                           {(sendingGas || confirmingSend) && <Loader2 className="animate-spin" />}
                           {sendingGas
-                            ? "Confirm tBNB in wallet..."
+                            ? "Confirm BNB in wallet..."
                             : confirmingSend
-                              ? "Sending tBNB..."
-                              : "Send 0.01 tBNB gas from connected wallet"}
+                              ? "Sending BNB..."
+                              : "Send 0.01 BNB gas from connected wallet"}
                           {!sendingGas && !confirmingSend && <ArrowRight className="size-3.5" />}
                         </Button>
                       )}

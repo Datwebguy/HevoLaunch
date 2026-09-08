@@ -77,15 +77,22 @@ export async function getFlyioBackendStatus(): Promise<FlyioBackendStatus | null
 export async function getFlyioAgentCard(agentSlugOrCategory: string): Promise<FlyioAgentCard | null> {
   try {
     const backendEndpoint = slugToBackendEndpoint(agentSlugOrCategory);
+    const primaryUrl = `https://hevo-${backendEndpoint}.fly.dev/.well-known/agent-card.json`;
+    const fallbackUrl = `${FLYIO_BACKEND_URL}/${backendEndpoint}/.well-known/agent-card.json`;
     
-    const response = await fetch(
-      `${FLYIO_BACKEND_URL}/${backendEndpoint}/.well-known/agent-card.json`,
-      {
+    let response = await fetch(primaryUrl, {
+      signal: AbortSignal.timeout(5000),
+      next: { revalidate: 60 },
+    }).catch(() => null);
+
+    if (!response || !response.ok) {
+      response = await fetch(fallbackUrl, {
         signal: AbortSignal.timeout(5000),
         next: { revalidate: 60 },
-      }
-    );
-    if (!response.ok) {
+      }).catch(() => null);
+    }
+
+    if (!response || !response.ok) {
       return null;
     }
     const card: FlyioAgentCard = await response.json();

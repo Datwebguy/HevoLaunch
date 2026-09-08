@@ -1,4 +1,5 @@
 import { listAgents, type ScanAgent } from "@/lib/8004scan";
+import { filterQualifiedAgents } from "@/lib/agent-quality";
 import type { Category } from "@/lib/types";
 
 /**
@@ -19,12 +20,16 @@ import type { Category } from "@/lib/types";
  * same kind of listing.
  */
 
-const MAINNET_CHAIN_ID = 56; // BNB Smart Chain Mainnet
-const LIVE_AGENTS_PER_CATEGORY = 4;
+const MAINNET_CHAIN_ID = 56;
+const LIVE_FETCH_LIMIT = 40;
+const LIVE_AGENTS_SHOWN = 8;
 
 export interface LiveAgentsResult {
   agents: ScanAgent[];
   total: number;
+  scanned: number;
+  qualified: number;
+  rejected: number;
   failed: boolean;
 }
 
@@ -38,13 +43,19 @@ export async function getLiveAgentsForCategory(
       chainId: MAINNET_CHAIN_ID,
       search: trimmed || category.discoveryQuery,
       sortBy: "total_score",
-      // A user-typed search is a deliberate dig through the whole live
-      // registry, not the default at-a-glance preview — show more.
-      limit: trimmed ? 12 : LIVE_AGENTS_PER_CATEGORY,
+      limit: trimmed ? LIVE_FETCH_LIMIT : LIVE_FETCH_LIMIT,
     });
-    return { agents, total, failed: false };
+    const { qualified, rejected, scanned } = filterQualifiedAgents(agents);
+    return {
+      agents: qualified.slice(0, LIVE_AGENTS_SHOWN),
+      total,
+      scanned,
+      qualified: qualified.length,
+      rejected,
+      failed: false,
+    };
   } catch {
-    return { agents: [], total: 0, failed: true };
+    return { agents: [], total: 0, scanned: 0, qualified: 0, rejected: 0, failed: true };
   }
 }
 

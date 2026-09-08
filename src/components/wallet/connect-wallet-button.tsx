@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, Copy, LogOut, Wallet } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Copy,
+  LogOut,
+  Network,
+  Wallet,
+} from "lucide-react";
 import { bsc } from "wagmi/chains";
 import {
   useAccount,
-  useChainId,
   useConnect,
   useDisconnect,
   useSwitchChain,
@@ -25,12 +32,30 @@ function truncateAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function getNetworkName(chainId: number | undefined) {
+  if (chainId === undefined) return "Network unavailable";
+
+  switch (chainId) {
+    case bsc.id:
+      return "BNB Smart Chain Mainnet";
+    case 1:
+      return "Ethereum Mainnet";
+    case 8453:
+      return "Base Mainnet";
+    case 137:
+      return "Polygon Mainnet";
+    case 97:
+      return "BNB Smart Chain Testnet";
+    default:
+      return `Unsupported network (${chainId})`;
+  }
+}
+
 export function ConnectWalletButton() {
-  const { address, isConnected, chain } = useAccount();
+  const { address, isConnected, chainId: walletChainId } = useAccount();
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const chainId = useChainId();
   const [copied, setCopied] = useState(false);
 
   if (!isConnected || !address) {
@@ -58,7 +83,8 @@ export function ConnectWalletButton() {
     );
   }
 
-  const onWrongNetwork = chainId !== bsc.id;
+  const onWrongNetwork = walletChainId !== bsc.id;
+  const networkName = getNetworkName(walletChainId);
 
   return (
     <DropdownMenu>
@@ -76,9 +102,18 @@ export function ConnectWalletButton() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
-          {chain?.name ?? "Unknown network"}
+          <span className="flex items-center gap-1.5">
+            {onWrongNetwork ? (
+              <AlertCircle className="size-3.5 text-amber-500" />
+            ) : (
+              <Network className="size-3.5 text-emerald-500" />
+            )}
+            {networkName}
+          </span>
           <span className="mt-0.5 block font-normal text-muted-foreground">
-            Hiring runs on BNB Smart Chain
+            {onWrongNetwork
+              ? "Switch networks to use HevoLaunch"
+              : "Connected to BNB Smart Chain"}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -94,8 +129,12 @@ export function ConnectWalletButton() {
           {copied ? "Copied" : "Copy address"}
         </DropdownMenuItem>
         {onWrongNetwork && (
-          <DropdownMenuItem onSelect={() => switchChain({ chainId: bsc.id })}>
-            Switch to BNB Smart Chain
+          <DropdownMenuItem
+            onSelect={() => switchChain({ chainId: bsc.id })}
+            className="font-medium text-primary focus:text-primary"
+          >
+            <Network />
+            Switch to BNB Mainnet
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

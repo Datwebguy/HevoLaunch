@@ -104,12 +104,14 @@ export default async function CategoryPage({
               </h2>
             </div>
             <span className="text-xs text-muted-foreground">
-              {live.total} registered on-chain via 8004scan
+              {live.qualified} qualified of {live.scanned} scanned
+              {live.total > 0 ? ` · ${live.total.toLocaleString()} on 8004scan` : ""}
             </span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real agents registered on mainnet. Search all {live.total.toLocaleString()} of
-            them directly from the decentralized registry.
+            Mainnet only. We drop placeholder names, gibberish listings, missing
+            descriptions, and agents with no A2A/MCP endpoint. 8004scan indexes
+            everything; HevoLaunch does not.
           </p>
 
           <form method="GET" className="relative mt-4 max-w-sm">

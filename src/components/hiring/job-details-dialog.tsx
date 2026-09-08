@@ -146,7 +146,7 @@ export function JobDetailsDialog({
       "",
       `Target Wallet: ${deliverable.targetWallet} (${targetInfo.sourceLabel})`,
       auditedBalances
-        ? `Audited Balances: ${auditedBalances.nativeBnb.toFixed(4)} tBNB ($${auditedBalances.nativeBnbUsd.toFixed(2)}) + ${auditedBalances.uToken.toFixed(2)} $U ($${auditedBalances.uTokenUsd.toFixed(2)}) = $${auditedBalances.totalPortfolioUsd.toFixed(2)} USD`
+        ? `Audited Balances: ${auditedBalances.nativeBnb.toFixed(4)} BNB ($${auditedBalances.nativeBnbUsd.toFixed(2)}) + ${auditedBalances.uToken.toFixed(2)} $U ($${auditedBalances.uTokenUsd.toFixed(2)}) = $${auditedBalances.totalPortfolioUsd.toFixed(2)} USD`
         : "",
       "",
       deliverable.summary,
@@ -373,7 +373,7 @@ export function JobDetailsDialog({
                   {auditedBalances ? (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
                       <span className="rounded bg-background/90 px-2 py-0.5 font-mono text-[11px] border border-border/60">
-                        <span className="text-muted-foreground mr-1">tBNB:</span>
+                        <span className="text-muted-foreground mr-1">BNB:</span>
                         <strong className="text-foreground">{auditedBalances.nativeBnb.toFixed(4)}</strong>{" "}
                         <span className="text-muted-foreground">(${auditedBalances.nativeBnbUsd.toFixed(2)})</span>
                       </span>

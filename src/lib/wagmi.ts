@@ -1,5 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { bsc, bscTestnet } from "wagmi/chains";
+import { bsc } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 
 /**
@@ -7,11 +7,12 @@ import { injected } from "wagmi/connectors";
  * Injected connector (MetaMask / browser wallet) connects to BSC Mainnet by default.
  */
 export const wagmiConfig = createConfig({
-  chains: [bsc, bscTestnet],
+  chains: [bsc],
   connectors: [injected()],
   transports: {
-    [bsc.id]: http("https://bsc-rpc.publicnode.com"),
-    [bscTestnet.id]: http("https://bsc-testnet-rpc.publicnode.com"),
+    // Use Binance's public BSC endpoint. PublicNode's endpoint now requires
+    // an Alchemy-style token for some receipt requests.
+    [bsc.id]: http("https://bsc-dataseed.binance.org"),
   },
   ssr: true,
 });

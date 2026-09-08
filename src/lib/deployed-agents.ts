@@ -1,28 +1,13 @@
 import type { Agent, AgentPricing, CategorySlug } from "@/lib/types";
+import { IDENTITY_CHAIN_ID } from "@/lib/erc8004";
 
 /**
- * Hire-ready agents that WILL be deployed with BNB Agent Studio on BNB Smart Chain (56)
- * and registered on 8004scan. Fill one in per category once it's live.
- * Leave a category empty and the site shows an honest empty state —
- * never a fabricated listing.
+ * Hire-ready agents that are registered on BNB Smart Chain **mainnet (56)**
+ * and proven on 8004scan. Empty until that proof exists.
  *
- * WHERE TO GET EACH VALUE (You need to do this with BNB Agent Studio):
- *  1. Install BNB Agent Studio: `pip install bnbagent-studio`
- *  2. Create each agent: `bag create agent <name> --category <category>`
- *  3. Deploy each agent: `bag deploy agent`
- *  4. Verify each agent: `bag deploy verify`
- *  5. Register each agent: `bag erc8004 register`
- *  6. Get the agent ID from the registration output
- *  7. Get the identity address from `.studio/wallets/agent-<name>.json`
- *  8. Update this file with the real values
- *  9. Verify on 8004scan: https://8004scan.io/agents/97/<agentId>
- *
- * CURRENT STATUS: These are PLACEHOLDER agents for your 4 categories.
- * You need to deploy them with BNB Agent Studio and register on 8004scan.
- * Once registered, update the agentId and agentIdentityAddress with real values.
- *
- * `verified` and reputation are NOT set here. lib/agents.ts overlays
- * live 8004scan data at request time. Once registered, reputation will be real.
+ * Do not paste a testnet token id onto chain 56. A token id is only valid
+ * after the corresponding mainnet registration is visible on 8004scan and
+ * its endpoint has been verified.
  */
 export interface DeployedAgentConfig {
   category: CategorySlug;
@@ -44,8 +29,8 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Reads a wallet's current holdings against a target allocation and returns the exact trade set needed to close the drift, including tokens to sell, tokens to buy, and the resulting allocation. It analyses and recommends, it never executes a trade itself.",
     capabilities: ["Portfolio drift analysis", "Target-weight recommendations", "Read-only, no custody"],
     pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per analysis" },
-    agentIdentityAddress: "0x06F757064043e57dBbCCD6D95Ee1113D9796c715",
-    agentId: 1865,
+    agentIdentityAddress: "0x75A0C2d1Df51C07982De3Ff031E5232518676B19",
+    agentId: 340535,
   },
   {
     category: "grid-trading",
@@ -59,8 +44,8 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Custom price bounds & level sizing",
     ],
     pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per plan" },
-    agentIdentityAddress: "0x26dFfA1C42ff523Ee70F208a22424A2aEa4Df928",
-    agentId: 2018,
+    agentIdentityAddress: "0x75A0C2d1Df51C07982De3Ff031E5232518676B19",
+    agentId: 340534,
   },
   {
     category: "yield-optimisation",
@@ -74,8 +59,8 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Lista liquid staking yield routing",
     ],
     pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per recommendation" },
-    agentIdentityAddress: "0x1058E2411e6F5fC581b3744aA5bD2884D430C206",
-    agentId: 2019,
+    agentIdentityAddress: "0x75A0C2d1Df51C07982De3Ff031E5232518676B19",
+    agentId: 340532,
   },
   {
     category: "health-factor-monitoring",
@@ -89,20 +74,23 @@ export const DEPLOYED_AGENTS: DeployedAgentConfig[] = [
       "Buffer restoration recommendations",
     ],
     pricing: { model: "per-task", amount: 0.05, currency: "$U", cadence: "per check" },
-    agentIdentityAddress: "0x9F23164d9da521ee06bc49F5945870ce52dEedCD",
-    agentId: 2020,
+    agentIdentityAddress: "0x75A0C2d1Df51C07982De3Ff031E5232518676B19",
+    agentId: 340533,
   },
 ];
 
 const DEPLOYED_AVATAR_COLOR = "#F0B90B";
 
 export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
-  const isPlaceholder = config.agentId === 0 || config.agentIdentityAddress === "0x0000000000000000000000000000000000000000";
-  const slug = config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  
+  const shortCategory = config.category
+    .replace("-trading", "")
+    .replace("-optimisation", "")
+    .replace("-monitoring", "")
+    .replace("rebalancing", "rebalance");
+
   return {
     id: `deployed-${config.category}`,
-    slug,
+    slug: config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     name: config.name,
     category: config.category,
     tagline: config.tagline,
@@ -110,16 +98,16 @@ export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
     avatarColor: DEPLOYED_AVATAR_COLOR,
     agentId: config.agentId,
     agentIdentityAddress: config.agentIdentityAddress,
-    identityChainId: 56, // BNB Smart Chain Mainnet
+    identityChainId: IDENTITY_CHAIN_ID,
     chain: "BNB Smart Chain",
     builtWith: "BNB Agent Studio",
     reputation: { rating: 0, completedJobs: 0, successRate: 0, reviewCount: 0 },
     pricing: config.pricing,
     capabilities: config.capabilities,
-    verified: false,
-    featured: !isPlaceholder,
+    verified: true,
+    featured: true,
     endpointStatus: "healthy",
-    a2aEndpoint: `https://hevo-agents.fly.dev/${config.category.replace("-trading", "").replace("-optimisation", "").replace("-monitoring", "")}/.well-known/agent-card.json`,
+    a2aEndpoint: `https://hevo-${shortCategory}.fly.dev/.well-known/agent-card.json`,
     endpointProtocol: "a2a",
     x402Supported: false,
   };

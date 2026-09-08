@@ -38,7 +38,7 @@ export const CategorySection = memo(function CategorySection({ shelf }: { shelf:
         ) : live && !live.failed && live.agents.length > 0 ? (
           <div>
             <p className="mb-2 text-xs text-muted-foreground">
-              No hire-ready agent yet. Live on-chain registrations (discovery mode).
+              No hire-ready Hevo agent on mainnet yet. Qualified live registrations only.
             </p>
             <div className="divide-y divide-border rounded-md border border-border">
               {live.agents.slice(0, 2).map((agent) => (

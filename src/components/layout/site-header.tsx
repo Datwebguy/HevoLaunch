@@ -35,6 +35,8 @@ import {
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { HevoLogo } from "@/components/brand/hevo-logo";
+import { useAccount } from "wagmi";
+import { bsc } from "wagmi/chains";
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   rebalancing: Scale,
@@ -45,6 +47,8 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { isConnected, chainId: walletChainId } = useAccount();
+  const walletOnBsc = !isConnected || walletChainId === bsc.id;
 
   const isCategoriesActive = CATEGORIES.some(
     (c) => pathname === `/agents/${c.slug}` || pathname.startsWith(`/agents/${c.slug}/`)
@@ -163,9 +167,21 @@ export function SiteHeader() {
         {/* RIGHT ACTIONS */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Network indicator pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>BNB Mainnet</span>
+          <div
+            className={cn(
+              "hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium",
+              walletOnBsc
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                : "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+            )}
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full",
+                walletOnBsc ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+              )}
+            />
+            <span>{walletOnBsc ? "BNB Mainnet" : "Switch to BNB"}</span>
           </div>
 
           <Button
@@ -178,6 +194,14 @@ export function SiteHeader() {
               <Terminal className="size-3.5 text-primary" />
               <span>Provider Guide</span>
             </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="hidden xl:inline-flex text-xs font-medium gap-1.5"
+          >
+            <Link href="/register">Register agent</Link>
           </Button>
 
           <ConnectWalletButton />

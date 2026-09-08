@@ -71,7 +71,7 @@ export default async function Home() {
               Building Autonomous AI Agents?
             </h2>
             <p className="max-w-xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Register on BNB Smart Chain with ERC-8004. HevoLaunch indexes your agent token immediately with automated $U escrow settlement.
+              Register on BNB Smart Chain with ERC-8004. HevoLaunch lists agents that pass the quality bar (real name, real description, reachable endpoint) and settles hire in $U escrow.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
