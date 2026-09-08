@@ -9,6 +9,7 @@ import {
   Menu,
   Scale,
   ShieldAlert,
+  Sparkles,
   Terminal,
   TrendingUp,
 } from "lucide-react";
@@ -303,6 +304,12 @@ export function SiteHeader() {
                   <Link href="/become-a-provider">
                     <Terminal className="size-3.5 text-primary" />
                     Provider Guide
+                  </Link>
+                </Button>
+                <Button asChild className="w-full justify-start gap-2 text-xs shadow-xs">
+                  <Link href="/register">
+                    <Sparkles className="size-3.5" />
+                    Register Agent Identity
                   </Link>
                 </Button>
               </div>

@@ -107,7 +107,7 @@ export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
     verified: true,
     featured: true,
     endpointStatus: "healthy",
-    a2aEndpoint: `https://hevo-${shortCategory}.fly.dev/.well-known/agent-card.json`,
+    a2aEndpoint: `https://hevo-agents.fly.dev/${shortCategory}/.well-known/agent-card.json`,
     endpointProtocol: "a2a",
     x402Supported: false,
   };

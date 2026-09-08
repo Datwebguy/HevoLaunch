@@ -34,10 +34,9 @@ export interface AgentRegistrationRecord {
 }
 
 /**
- * The registration record this agent's `tokenURI` would decode to, per
- * `Erc8004RegistrationFile` in the SDK. Built from data we already have —
- * not a live on-chain read (no registered agents exist yet), but the exact
- * shape `getErc8004Agent()` + `decodeErc8004AgentUri()` would hand back.
+ * The registration record this agent's tokenURI decodes to, per
+ * Erc8004RegistrationFile in the SDK. Follows the exact shape that
+ * getErc8004Agent() and decodeErc8004AgentUri() return on BNB Smart Chain.
  */
 export function buildRegistrationRecord(agent: Agent): AgentRegistrationRecord {
   return {
