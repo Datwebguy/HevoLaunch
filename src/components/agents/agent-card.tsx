@@ -49,13 +49,13 @@ export const AgentCard = memo(function AgentCard({
 
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="truncate text-sm font-medium text-foreground">{agent.name}</h3>
+          <h3 className="text-sm font-semibold text-foreground shrink-0">{agent.name}</h3>
           {agent.featured ? (
-            <span className="rounded bg-primary/15 text-primary text-[10px] font-medium px-1.5 py-0.2">
+            <span className="rounded bg-primary/15 text-primary text-[10px] font-medium px-1.5 py-0.5 shrink-0">
               Flagship
             </span>
           ) : (
-            <span className="rounded bg-muted text-muted-foreground text-[10px] font-mono px-1.5 py-0.2">
+            <span className="rounded bg-muted text-muted-foreground text-[10px] font-mono px-1.5 py-0.5 shrink-0">
               #{agent.agentId}
             </span>
           )}
@@ -65,7 +65,9 @@ export const AgentCard = memo(function AgentCard({
           {agent.endpointStatus === "coming-soon" && (
             <Clock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Coming soon" />
           )}
-          <span className="shrink-0 text-xs text-muted-foreground">{category?.shortName}</span>
+          {!flush && (
+            <span className="hidden sm:inline shrink-0 text-xs text-muted-foreground">{category?.shortName}</span>
+          )}
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{agent.tagline}</p>
       </div>

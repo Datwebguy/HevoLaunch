@@ -31,16 +31,20 @@ function matchesQuery(agent: Agent, query: string) {
 
 function sortAgents(agents: Agent[], sortBy: SortKey): Agent[] {
   const sorted = [...agents];
-  switch (sortBy) {
-    case "rating":
-      return sorted.sort((a, b) => b.reputation.rating - a.reputation.rating);
-    case "jobs":
-      return sorted.sort(
-        (a, b) => b.reputation.completedJobs - a.reputation.completedJobs
-      );
-    case "name":
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
-  }
+  return sorted.sort((a, b) => {
+    // Flagship agents always pinned to top
+    if (a.featured && !b.featured) return -1;
+    if (!a.featured && b.featured) return 1;
+
+    switch (sortBy) {
+      case "rating":
+        return b.reputation.rating - a.reputation.rating;
+      case "jobs":
+        return b.reputation.completedJobs - a.reputation.completedJobs;
+      case "name":
+        return a.name.localeCompare(b.name);
+    }
+  });
 }
 
 /**
