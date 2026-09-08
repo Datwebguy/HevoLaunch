@@ -120,7 +120,7 @@ function formatPasskeyError(err: unknown, action: "create" | "recover"): string 
     lower.includes("timed out") ||
     lower.includes("abort")
   ) {
-    return "Passkey prompt was cancelled or timed out. Try again, or restore an existing hiring wallet.";
+    return "Passkey prompt was interrupted or timed out. If Chrome asked you to sign in to Google or Windows Hello, that paused the first attempt. Now that you are signed in, click Create hiring wallet below to complete setup.";
   }
   if (
     lower.includes("no passkey") ||

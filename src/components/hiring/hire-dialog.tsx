@@ -317,16 +317,6 @@ export function HireDialog({
                     <AlertDescription className="text-xs leading-relaxed">{walletError}</AlertDescription>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs mt-1 bg-background/60 hover:bg-background"
-                  onClick={handleCreatePasskeyWallet}
-                  disabled={connecting}
-                >
-                  {connecting ? <Loader2 className="size-3 animate-spin mr-1.5" /> : null}
-                  Create hiring wallet
-                </Button>
               </Alert>
             )}
 
