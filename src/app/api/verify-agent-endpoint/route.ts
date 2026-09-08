@@ -32,9 +32,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const card = (await response.json()) as { name?: unknown; skills?: unknown };
-  if (typeof card.name !== "string" || !Array.isArray(card.skills)) {
-    return NextResponse.json({ error: "The endpoint did not return a valid A2A agent card." }, { status: 400 });
+  const card = (await response.json()) as {
+    name?: unknown;
+    skills?: unknown;
+    capabilities?: unknown;
+    services?: unknown;
+    description?: unknown;
+  };
+  const hasFeatures =
+    Array.isArray(card.skills) ||
+    Array.isArray(card.capabilities) ||
+    Array.isArray(card.services) ||
+    typeof card.description === "string";
+
+  if (typeof card.name !== "string" || !hasFeatures) {
+    return NextResponse.json(
+      { error: "The endpoint did not return a valid A2A agent card (must include name and skills, capabilities, or services)." },
+      { status: 400 }
+    );
   }
 
   return NextResponse.json({
