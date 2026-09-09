@@ -42,7 +42,7 @@ export interface AgentReputation {
 }
 
 /**
- * Pricing as exposed through Altana (x402 + ERC-8183 sessions).
+ * Pricing as exposed through Altana ERC-8183 sessions.
  * "$U" is the real ERC-8183 escrow currency (United Stables) — what a
  * bag-deployed seller actually gets paid in. "USDC"/"BNB" stay for
  * curated-listing display purposes.
@@ -92,8 +92,6 @@ export interface Agent {
   a2aEndpoint?: string | null;
   /** Protocol type for the endpoint (MCP or A2A). */
   endpointProtocol?: EndpointProtocol;
-  /** Whether the agent supports x402 payment protocol for per-request payments. */
-  x402Supported?: boolean;
   /** Provenance for displayed registry metrics and the last registry update time. */
   dataSource?: AgentDataSource;
   dataUpdatedAt?: string;
@@ -191,38 +189,6 @@ export interface AgentActivityEntry {
   relativeTime: string;
 }
 
-/**
- * x402 payment protocol types for per-request agent payments.
- * Based on the x402 specification for Agent-to-Agent payments.
- */
-export type X402PaymentStatus = "pending" | "paid" | "failed" | "refunded";
-
-export interface X402PaymentRequest {
-  /** The agent's endpoint URL to call. */
-  endpoint: string;
-  /** The payment amount in the specified currency. */
-  amount: string;
-  /** Currency for payment (typically $U for ERC-8183 compatibility). */
-  currency: string;
-  /** Optional payment description/metadata. */
-  description?: string;
-  /** The agent's identity address for payment routing. */
-  recipientAddress: `0x${string}`;
-}
-
-export interface X402PaymentResponse {
-  /** Payment status. */
-  status: X402PaymentStatus;
-  /** Transaction hash if payment was successful. */
-  txHash?: `0x${string}`;
-  /** Payment ID for tracking. */
-  paymentId?: string;
-  /** Error message if payment failed. */
-  error?: string;
-  /** Timestamp of payment. */
-  timestamp: number;
-}
-
 export interface EndpointCallRequest {
   /** The agent endpoint to call. */
   endpoint: string;
@@ -234,10 +200,6 @@ export interface EndpointCallRequest {
   method?: string;
   /** Parameters for the endpoint call. */
   parameters?: Record<string, unknown>;
-  /** Whether this requires x402 payment. */
-  requiresPayment: boolean;
-  /** Payment details if payment is required. */
-  payment?: X402PaymentRequest;
 }
 
 export interface EndpointCallResponse {
@@ -247,8 +209,6 @@ export interface EndpointCallResponse {
   data?: Record<string, unknown>;
   /** Error message if the call failed. */
   error?: string;
-  /** Payment result if payment was involved. */
-  payment?: X402PaymentResponse;
   /** Response timestamp. */
   timestamp: number;
 }

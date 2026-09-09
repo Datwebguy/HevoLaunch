@@ -36,7 +36,7 @@ import {
   type FundingCheck,
   type StoredHiringWallet,
 } from "@/lib/altana";
-import { negotiateAgentQuote, type AgentQuote } from "@/lib/x402";
+import { negotiateAgentQuote, type AgentQuote } from "@/lib/agent-endpoint";
 import { saveSession } from "@/lib/hire-sessions";
 import { Button } from "@/components/ui/button";
 import {

@@ -149,7 +149,7 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
             </p>
           </section>
 
-          {(agent.supported_protocols.length > 0 || agent.x402_supported) && (
+          {agent.supported_protocols.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-foreground">Protocols</h2>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -158,7 +158,6 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
                     {protocol}
                   </Badge>
                 ))}
-                {agent.x402_supported && <Badge variant="outline">x402 advertised · unavailable</Badge>}
               </div>
             </section>
           )}

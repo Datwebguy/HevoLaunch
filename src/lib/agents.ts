@@ -54,7 +54,6 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
       endpointStatus: "coming-soon",
       a2aEndpoint: null,
       endpointProtocol: "unknown",
-      x402Supported: false,
       dataSource: "unknown",
     };
   }
@@ -117,7 +116,6 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
       // endpoint that the ERC-8004 record proves.
       a2aEndpoint: scan?.a2a_endpoint || flyioEndpoint || agent.a2aEndpoint,
       endpointProtocol: scan?.a2a_endpoint ? "a2a" : (flyioEndpoint ? endpointProtocol : "a2a"),
-      x402Supported: Boolean(scan?.x402_supported),
       reputation: {
         rating: scan?.total_score ?? 0,
         completedJobs: 0,
@@ -137,7 +135,6 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
       verified: false,
       endpointStatus: "unknown",
       endpointProtocol: "a2a",
-      x402Supported: false,
     };
     enrichedAgentCache.set(cacheKey, { data: fallback, expiresAt: Date.now() + 30_000 });
     return fallback;

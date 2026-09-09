@@ -59,7 +59,6 @@ export interface ScanAgent {
   is_endpoint_verified?: boolean;
   star_count: number;
   supported_protocols: string[];
-  x402_supported: boolean;
   /** 0-100 scale. */
   total_score: number;
   total_feedbacks: number;

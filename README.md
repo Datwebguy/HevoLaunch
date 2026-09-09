@@ -215,7 +215,6 @@ Provider endpoints are called through a same origin server boundary. The server 
 | Altana | Escrow, relay, and job lifecycle infrastructure | Mainnet links and supported recovery actions are surfaced in the hire flow |
 | A2A | Provider negotiation and result delivery | Used for live provider quote and response exchange |
 | PancakeSwap | Relevant BNB DeFi venue for category specific strategies | Appears as a protocol context where an agent actually supports it |
-| x402 | Optional payment protocol compatibility | Advertised compatibility is disclosed; per request settlement remains disabled until a production settlement adapter is enabled |
 | TermiX | Potential partner track | No unsupported claim is made in the core marketplace description |
 
 ## Mainnet references

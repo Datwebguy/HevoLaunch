@@ -110,7 +110,6 @@ export function buildDeployedAgent(config: DeployedAgentConfig): Agent {
     endpointStatus: "unknown",
     a2aEndpoint: `https://hevo-agents.fly.dev/${shortCategory}/.well-known/agent-card.json`,
     endpointProtocol: "a2a",
-    x402Supported: false,
   };
 }
 

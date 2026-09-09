@@ -138,6 +138,5 @@ export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): 
     endpointProtocol: scan.a2a_endpoint ? "a2a" : "unknown",
     dataSource: "8004scan",
     dataUpdatedAt: scan.updated_at,
-    x402Supported: scan.x402_supported,
   };
 }
