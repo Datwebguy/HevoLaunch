@@ -27,7 +27,13 @@ import {
   getDeliverableForJob,
   getTargetWalletInfo,
 } from "@/lib/deliverables";
-import { explorerTxUrl } from "@/lib/altana";
+import {
+  claimExpiredHireSession,
+  disputeHireSession,
+  explorerTxUrl,
+  ESCROW_COMMERCE_ADDRESS,
+  ESCROW_POLICY_ADDRESS,
+} from "@/lib/altana";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -58,6 +64,9 @@ export function JobDetailsDialog({
   const [copiedAddr, setCopiedAddr] = useState(false);
   const [auditedBalances, setAuditedBalances] = useState<AuditedWalletBalances | null>(null);
   const [auditing, setAuditing] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [escrowAction, setEscrowAction] = useState<"dispute" | "refund" | null>(null);
+  const [escrowActionError, setEscrowActionError] = useState<string | null>(null);
   const { address: connectedAddress } = useAccount();
 
   // Active target wallet selection
@@ -79,6 +88,29 @@ export function JobDetailsDialog({
 
   const targetInfo = getTargetWalletInfo(session.task, session, connectedAddress, customWallet || activeAddress);
   const deliverable = getDeliverableForJob(session, connectedAddress, auditedBalances, targetInfo.address);
+  const isFunded = ["FUNDED", "SUBMITTED", "COMPLETED"].includes(session.status);
+  const isDelivered = ["SUBMITTED", "COMPLETED"].includes(session.status);
+
+  async function handleEscrowAction(action: "dispute" | "refund") {
+    if (!connectedAddress) {
+      setEscrowActionError("Connect the wallet that created this hire first.");
+      return;
+    }
+    setEscrowAction(action);
+    setEscrowActionError(null);
+    try {
+      if (action === "dispute") {
+        await disputeHireSession(session, connectedAddress);
+      } else {
+        await claimExpiredHireSession(session, connectedAddress);
+      }
+      setEscrowActionError("Transaction submitted. Refresh the job status from BNB Mainnet shortly.");
+    } catch (err) {
+      setEscrowActionError(err instanceof Error ? err.message : "The escrow action failed.");
+    } finally {
+      setEscrowAction(null);
+    }
+  }
 
   // Fetch live on-chain balances whenever dialog opens or active address changes
   useEffect(() => {
@@ -86,6 +118,7 @@ export function JobDetailsDialog({
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuditing(true);
+    setAuditError(null);
 
     fetchLiveWalletAudit(targetInfo.address)
       .then((data) => {
@@ -94,6 +127,7 @@ export function JobDetailsDialog({
         }
       })
       .catch((err) => {
+        setAuditError(err instanceof Error ? err.message : "Live BSC audit unavailable.");
         console.warn("[JobDetailsDialog] Failed to fetch live balances:", err);
       })
       .finally(() => {
@@ -110,9 +144,11 @@ export function JobDetailsDialog({
   async function handleRefreshAudit() {
     setAuditing(true);
     try {
+      setAuditError(null);
       const data = await fetchLiveWalletAudit(targetInfo.address);
       setAuditedBalances(data);
     } catch (err) {
+      setAuditError(err instanceof Error ? err.message : "Live BSC audit unavailable.");
       console.warn("[JobDetailsDialog] Refresh failed:", err);
     } finally {
       setAuditing(false);
@@ -230,7 +266,7 @@ export function JobDetailsDialog({
             <TabsList className="grid w-full grid-cols-3 h-9">
               <TabsTrigger value="results" className="text-xs gap-1.5">
                 <Sparkles className="size-3.5 text-primary" />
-                Deliverable Report
+                {isDelivered ? "Provider Result" : "Result Status"}
               </TabsTrigger>
               <TabsTrigger value="escrow" className="text-xs gap-1.5">
                 <ShieldCheck className="size-3.5 text-success" />
@@ -247,16 +283,83 @@ export function JobDetailsDialog({
           <div className="flex-1 overflow-y-auto p-5 pt-3 space-y-4">
             {/* TAB 1: DELIVERABLE REPORT */}
             <TabsContent value="results" className="m-0 space-y-4 focus-visible:outline-none">
-              {/* LIVE ON-CHAIN AUDIT VERIFICATION CARD */}
+              {!isDelivered && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Waiting for the provider&apos;s result</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Your hire is tracked on BNB Smart Chain, but the agent has not submitted a real ERC-8183 deliverable yet. The local balance audit below is only a preview and is not the provider&apos;s completed work.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {session.status === "FUNDED" && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Escrow protection</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    ERC-8183 has no generic pause button while a provider is working. Funds remain in escrow; if the job expires without delivery, you can claim a refund. If a result is submitted, you can dispute it during the policy window.
+                  </p>
+                </div>
+              )}
+              {session.status === "SUBMITTED" && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Review or dispute this result</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Dispute sends a real ERC-8183 policy transaction and should only be used when the submitted deliverable is materially incorrect.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleEscrowAction("dispute")} disabled={escrowAction !== null}>
+                    {escrowAction === "dispute" ? <Loader2 className="mr-2 size-3.5 animate-spin" /> : null}
+                    Dispute submitted result
+                  </Button>
+                </div>
+              )}
+              {session.status === "EXPIRED" && (
+                <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Claim expired-job refund</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">The job expired without a provider deliverable. Claiming calls the ERC-8183 refund path on BNB Mainnet.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleEscrowAction("refund")} disabled={escrowAction !== null}>
+                    {escrowAction === "refund" ? <Loader2 className="mr-2 size-3.5 animate-spin" /> : null}
+                    Claim refund
+                  </Button>
+                </div>
+              )}
+              {escrowActionError && <p className="text-xs text-muted-foreground">{escrowActionError}</p>}
+              {isDelivered && session.deliverableUrl && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/5 p-3.5">
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">Provider deliverable submitted</p>
+                    <p className="text-[11px] text-muted-foreground">Resolved from the ERC-8183 job on BNB Smart Chain.</p>
+                  </div>
+                  <a href={session.deliverableUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary hover:underline">
+                    Open provider result
+                  </a>
+                </div>
+              )}
+              {!isDelivered && (
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <p className="text-sm font-semibold text-foreground">No provider result yet</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Live wallet balances are not presented as the agent&apos;s answer. The result panel will unlock only after an ERC-8183 provider deliverable is submitted on BNB Mainnet.
+                  </p>
+                </div>
+              )}
+              {isDelivered && <>
+              {/* LIVE ON-CHAIN AUDIT CONTEXT */}
               <div className="rounded-lg border border-primary/25 bg-primary/5 p-3.5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 pb-2">
                   <div className="flex items-center gap-2">
                     <span className="relative flex size-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                      <span className="relative inline-flex rounded-full size-2.5 bg-success"></span>
+                      <span className={`relative inline-flex rounded-full size-2.5 ${auditedBalances ? "bg-success" : "bg-muted-foreground"}`}></span>
                     </span>
                     <span className="text-xs font-semibold text-foreground">
-                      Live On-Chain Balance Audit Verified
+                       {auditedBalances ? "Live On-Chain Balance Context" : "Live On-Chain Balance Read"}
                     </span>
                     <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
                       BNB Smart Chain
@@ -386,6 +489,10 @@ export function JobDetailsDialog({
                         Total Valuation: ${auditedBalances.totalPortfolioUsd.toFixed(2)} USD
                       </span>
                     </div>
+                  ) : auditError ? (
+                    <div className="pt-1 text-[11px] text-destructive">
+                      Live BSC audit unavailable. No fallback balances or derived recommendations are shown.
+                    </div>
                   ) : (
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-1">
                       <Loader2 className="size-3 animate-spin text-primary" />
@@ -403,7 +510,7 @@ export function JobDetailsDialog({
                       {deliverable.title}
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Tailored execution strategy calculated from live audited balances.
+                      {isDelivered ? "Provider-submitted result with live audit context." : "Local preview calculated from live audited balances; not a provider deliverable."}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -504,6 +611,7 @@ export function JobDetailsDialog({
                   </ul>
                 </div>
               </div>
+              </>}
             </TabsContent>
 
             {/* TAB 2: ON-CHAIN ESCROW */}
@@ -518,12 +626,12 @@ export function JobDetailsDialog({
                   <div className="flex items-center justify-between rounded bg-muted/50 p-2">
                     <span className="text-muted-foreground">AgenticCommerce Kernel:</span>
                     <a
-                      href="https://bscscan.com/address/0xEa4DAa3100A767e86FDed867729ae7446476EBA6"
+                      href={`https://bscscan.com/address/${ESCROW_COMMERCE_ADDRESS}`}
                       target="_blank"
                       rel="noreferrer"
                       className="font-mono text-primary hover:underline flex items-center gap-1"
                     >
-                      0xEa4D...EBA6
+                      {truncate(ESCROW_COMMERCE_ADDRESS)}
                       <ExternalLink className="size-3" />
                     </a>
                   </div>
@@ -567,9 +675,14 @@ export function JobDetailsDialog({
 
                   <div className="flex items-center justify-between rounded bg-muted/50 p-2">
                     <span className="text-muted-foreground">Dispute Policy Contract:</span>
-                    <span className="font-mono text-foreground font-medium">
-                      0x9C01...6dE5 (Whitelisted OptimisticPolicy)
-                    </span>
+                    <a
+                      href={`https://bscscan.com/address/${ESCROW_POLICY_ADDRESS}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-primary hover:underline"
+                    >
+                      {truncate(ESCROW_POLICY_ADDRESS)}
+                    </a>
                   </div>
 
                   {session.txHash && (
@@ -599,7 +712,7 @@ export function JobDetailsDialog({
                       <CheckCircle2 className="size-3.5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">1. Escrow Job Initialized</p>
+                      <p className="font-semibold text-foreground">1. Escrow Job {session.jobId ? "Initialized" : "Awaiting Funding"}</p>
                       <p className="text-muted-foreground text-[11px]">
                         Job parameters and budget registered with AgenticCommerce kernel on BNB Smart Chain.
                       </p>
@@ -611,9 +724,9 @@ export function JobDetailsDialog({
                       <CheckCircle2 className="size-3.5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">2. Capital Escrowed ({formatUnits(BigInt(session.budget), 18)} $U)</p>
+                      <p className="font-semibold text-foreground">2. {isFunded ? `Capital Escrowed (${formatUnits(BigInt(session.budget), 18)} $U)` : "Capital Not Yet Escrowed"}</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Buyer approved and funded $U escrow. Escrow contract locked funds safely.
+                        {isFunded ? "The confirmed funding transaction locked the budget in the escrow contract." : "This job has not been confirmed as funded on BNB Smart Chain."}
                       </p>
                     </div>
                   </div>
@@ -623,9 +736,9 @@ export function JobDetailsDialog({
                       <CheckCircle2 className="size-3.5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">3. A2A Execution Dispatched</p>
+                      <p className="font-semibold text-foreground">3. Agent Runtime Status: {session.status}</p>
                       <p className="text-muted-foreground text-[11px]">
-                        `notify_funded` event transmitted to agent runtime at https://hevo-agents.fly.dev.
+                        Runtime dispatch is only considered confirmed when the seller submits an on-chain deliverable.
                       </p>
                     </div>
                   </div>
@@ -635,9 +748,9 @@ export function JobDetailsDialog({
                       <CheckCircle2 className="size-3.5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">4. Live On-Chain Portfolio Audited</p>
+                      <p className="font-semibold text-foreground">4. {auditedBalances ? "Live On-Chain Portfolio Audited" : "Live Portfolio Audit Pending"}</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Audited live BNB and $U token balances on BNB Smart Chain.
+                        {auditedBalances ? "Live BNB and $U balances were read from BNB Smart Chain." : "No balance result is available yet; no derived recommendation is asserted."}
                       </p>
                     </div>
                   </div>
@@ -647,9 +760,9 @@ export function JobDetailsDialog({
                       <CheckCircle2 className="size-3.5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">5. AI Intelligence Deliverable Produced</p>
+                      <p className="font-semibold text-foreground">5. {isDelivered ? "AI Intelligence Deliverable Produced" : "Deliverable Pending"}</p>
                       <p className="text-muted-foreground text-[11px]">
-                        Customized DeFi mathematical execution matrix generated and deliverable ready for user review.
+                        {isDelivered ? "The seller submitted a deliverable that can be resolved from the ERC-8183 job." : "The seller has not submitted an on-chain deliverable."}
                       </p>
                     </div>
                   </div>

@@ -62,9 +62,9 @@ export function ConnectWalletButton() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={isPending}>
+          <Button size="sm" variant="outline" disabled={isPending} aria-label={isPending ? "Connecting wallet" : "Connect wallet"}>
             <Wallet />
-            {isPending ? "Connecting..." : "Connect wallet"}
+            <span className="hidden sm:inline">{isPending ? "Connecting..." : "Connect wallet"}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -89,14 +89,14 @@ export function ConnectWalletButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" aria-label={`Connected wallet ${truncateAddress(address)}`}>
           <span
             className={`size-2 rounded-full ${
               onWrongNetwork ? "bg-destructive" : "bg-success"
             }`}
             aria-hidden
           />
-          {truncateAddress(address)}
+          <span className="hidden sm:inline">{truncateAddress(address)}</span>
           <ChevronDown className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>

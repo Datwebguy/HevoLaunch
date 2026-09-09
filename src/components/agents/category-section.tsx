@@ -41,9 +41,9 @@ export const CategorySection = memo(function CategorySection({ shelf }: { shelf:
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
               <span className="font-mono uppercase tracking-wider text-[10px]">
-                Qualified Registry Agents
+                 Qualified Registry Listings
               </span>
-              <span>{live.qualified} verified</span>
+               <span>{live.qualified} qualified</span>
             </div>
             <div className="divide-y divide-border rounded-md border border-border/70 bg-card/50">
               {live.agents.slice(0, 2).map((agent) => (
@@ -54,7 +54,22 @@ export const CategorySection = memo(function CategorySection({ shelf }: { shelf:
         )}
 
         {curated.length === 0 && (!live || live.failed || live.agents.length === 0) && (
-          <EmptyAgentsState categoryName={category.name} flush />
+          live === null ? (
+            <div className="rounded-xl border border-dashed border-border/80 bg-background/40 p-4">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Browse the live BNB registry for verified {category.shortName.toLowerCase()} agents.
+              </p>
+              <Link
+                href={`/agents/${category.slug}`}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+              >
+                Open {category.shortName}
+                <ArrowRight className="size-3" />
+              </Link>
+            </div>
+          ) : (
+            <EmptyAgentsState categoryName={category.name} flush />
+          )
         )}
       </div>
     </section>

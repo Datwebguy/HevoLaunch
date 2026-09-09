@@ -41,7 +41,7 @@ export async function generateMetadata({
 export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps) {
   const { chainId, tokenId } = await params;
   const numericChainId = Number(chainId);
-  if (!Number.isFinite(numericChainId)) notFound();
+  if (numericChainId !== 56) notFound();
 
   let agent;
   try {
@@ -49,6 +49,8 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
   } catch {
     notFound();
   }
+
+  if (agent.chain_id !== 56 || agent.is_testnet) notFound();
 
   const scanUrl = scanAgentUrl(numericChainId, tokenId);
 
@@ -156,7 +158,7 @@ export default async function LiveAgentDetailPage({ params }: LiveAgentPageProps
                     {protocol}
                   </Badge>
                 ))}
-                {agent.x402_supported && <Badge variant="outline">x402</Badge>}
+                {agent.x402_supported && <Badge variant="outline">x402 advertised · unavailable</Badge>}
               </div>
             </section>
           )}

@@ -34,7 +34,7 @@ export default function BecomeAProviderPage() {
           Become Provider
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
-          Build, deploy, and monetize your autonomous AI agent on BNB Smart Chain with ERC-8004 identity and Altana ERC-8183 escrow.
+          Build and publish a live BNB Smart Chain agent with an ERC-8004 identity. HevoLaunch currently lists qualified mainnet agents; task escrow is not enabled in this marketplace.
         </p>
       </div>
 
@@ -57,13 +57,10 @@ export default function BecomeAProviderPage() {
 
         <div className="space-y-2 text-xs sm:text-sm text-muted-foreground font-mono leading-relaxed border-t border-border/60 pt-4">
           <p className="text-foreground font-medium">
-            We&apos;ll guide you through building your Agent, after which you can earn $U through two modes:
+            We&apos;ll guide you through building your Agent. The current marketplace path is:
           </p>
           <p className="text-primary font-semibold">
-            &gt; Marketplace Discovery <span className="text-muted-foreground font-normal">: users discover and hire your agent from the curated and live 8004scan catalogue.</span>
-          </p>
-          <p className="text-primary font-semibold">
-            &gt; Task Marketplace Bounties <span className="text-muted-foreground font-normal">: your agent bids on and fulfills custom decentralized task requests posted by users.</span>
+            &gt; Marketplace Discovery <span className="text-muted-foreground font-normal">: users discover and hire qualified BSC mainnet agents from the live 8004scan catalogue.</span>
           </p>
         </div>
 
@@ -73,7 +70,7 @@ export default function BecomeAProviderPage() {
             Escrow Settlement Flow:
           </p>
           <p className="leading-relaxed">
-            Both parties agree &rarr; user funds the Altana ERC-8183 escrow contract in $U. After deliverable is posted, the client accepts or the optimistic dispute window clears, and the escrow releases the payment directly to your provider wallet.
+            Any escrow settlement must be created and completed by a supported, real ERC-8183 flow. HevoLaunch does not currently create task escrow jobs or promise automatic payouts.
           </p>
         </div>
       </div>
@@ -161,13 +158,13 @@ export default function BecomeAProviderPage() {
                         <Coins className="size-3.5 text-primary" />
                         1. $U Payment Token
                       </p>
-                      <Badge variant="secondary" className="text-[9px] font-mono">Task Escrow Currency</Badge>
+                      <Badge variant="secondary" className="text-[9px] font-mono">Reference only</Badge>
                     </div>
                     <p className="text-muted-foreground leading-relaxed">
-                      $U (United Stables) is the official ERC-8183 escrow currency used on BNB Smart Chain:
+                      $U (United Stables) is the SDK-listed ERC-8183 token address. Confirm the current contract and allowance requirements in the official SDK/docs before signing:
                     </p>
                     <div className="text-[10px] font-mono text-foreground/80 break-all pt-0.5">
-                      <code>0xcE24439F2D9C6a2289F741120FE202248B666666</code>
+                      <a href="https://bscscan.com/token/0xcE24439F2D9C6a2289F741120FE202248B666666" target="_blank" rel="noreferrer" className="text-primary hover:underline">0xcE24439F2D9C6a2289F741120FE202248B666666</a>
                     </div>
                   </div>
 
@@ -207,16 +204,18 @@ export default function BecomeAProviderPage() {
               Install BNB Agent Studio & Skills
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Run this command in your project terminal to install the official BNB Agent Studio CLI and load the ERC-8004 / ERC-8183 skills into your AI agent:
+              Use the current official BNB Agent Studio installation and skills commands. The CLI is authoritative; validate the installed version before using any payment or deployment command:
             </p>
 
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>Terminal Command</span>
-                <CopyButton value="pip install bnbagent-studio && bag skills install" />
+                <CopyButton value="npx skills add bnb-chain/bnbchain-skills\nuv run bag --help\nuv run bag doctor" />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto">
-                pip install bnbagent-studio && bag skills install
+                npx skills add bnb-chain/bnbchain-skills
+                uv run bag --help
+                uv run bag doctor
               </pre>
             </div>
           </div>
@@ -239,17 +238,20 @@ export default function BecomeAProviderPage() {
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>Agent Prompt</span>
                 <CopyButton
-                  value={`Create a new BNB agent named <AgentName> on BNB Smart Chain.\nCategory: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.\nIt should read on-chain DeFi portfolio holdings and return structured mathematical strategy deliverables.`}
+                  value={`Create a new BNB Smart Chain MAINNET agent named <AgentName>.\nCategory: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.\nNever use testnet, localhost, mocks, fixtures, or fabricated metrics.\nReturn category-specific results with source URLs and an asOf timestamp; return data unavailable when the RPC/API is unavailable.\nUse non-custodial permissions, explicit spend caps, expiry, and a revocable session design.\nExpose a live HTTPS A2A agent card and prepare ERC-8004 metadata with chainId 56.`}
                 />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
-{`Create a new BNB agent named <AgentName> on BNB Smart Chain.
+{`Create a new BNB Smart Chain MAINNET agent named <AgentName>.
 Category: <Grid Trading / Yield Optimisation / Rebalancing / Health Factor Monitoring>.
-It should read on-chain DeFi portfolio holdings and return structured mathematical strategy deliverables.`}
+Never use testnet, localhost, mocks, fixtures, or fabricated metrics.
+Return category-specific results with source URLs and an asOf timestamp; return data unavailable when the RPC/API is unavailable.
+Use non-custodial permissions, explicit spend caps, expiry, and a revocable session design.
+Expose a live HTTPS A2A agent card and prepare ERC-8004 metadata with chainId 56.`}
               </pre>
             </div>
             <p className="text-xs text-muted-foreground font-mono">
-              &rarr; This generates <code className="text-foreground">agent.py</code>, configures the ERC-8004 on-chain registration, and generates the agent wallet.
+              &rarr; Scaffolding creates project files only. Registration, wallet creation, deployment, and signing are separate steps; inspect the installed CLI help and never expose a private key in the client or repository.
             </p>
           </div>
         </div>
@@ -264,28 +266,22 @@ It should read on-chain DeFi portfolio holdings and return structured mathematic
               Configure $U Pricing in studio.toml
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              In your project&apos;s generated <code className="font-mono text-foreground rounded bg-muted px-1.5 py-0.5 text-xs">studio.toml</code>, set your job list price in United Stables ($U, 18 decimals) and escrow parameters:
+              If you are implementing a real provider-side payment flow, configure <code className="font-mono text-foreground rounded bg-muted px-1.5 py-0.5 text-xs">studio.toml</code> using the schema supported by your installed CLI. This marketplace does not currently enable task escrow, so this example is not a listing guarantee:
             </p>
 
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>studio.toml</span>
-                <CopyButton
-                  value={`[agent]\nname = "MyBNBAgent"\ncategory = "grid-trading"\nchain_id = 56  # BNB Smart Chain Mainnet\n\n[payments.erc8183]\nenabled = true\ntoken = "0xcE24439F2D9C6a2289F741120FE202248B666666"  # Mainnet $U Payment Token\nprice = "1000000000000000000"                           # 1.0 $U list price (18 decimals)\nmax_price = "5000000000000000000"                       # 5.0 $U maximum quote cap\ndispute_window_seconds = 86400                          # 24-hour optimistic dispute window`}
-                />
+                <CopyButton value={`[agent]\nname = "MyBNBAgent"\ncategory = "grid-trading"\nchain_id = 56\n\n# Validate payment fields against your installed Agent Studio CLI.\n# Do not enable escrow until buy, fund, submit, approve/dispute, and settle\n# have been tested with real BSC mainnet receipts.`} />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
 {`[agent]
 name = "MyBNBAgent"
 category = "grid-trading"
-chain_id = 56  # BNB Smart Chain Mainnet
+chain_id = 56
 
-[payments.erc8183]
-enabled = true
-token = "0xcE24439F2D9C6a2289F741120FE202248B666666"  # Mainnet $U Payment Token
-price = "1000000000000000000"                           # 1.0 $U list price (18 decimals)
-max_price = "5000000000000000000"                       # 5.0 $U maximum quote cap
-dispute_window_seconds = 86400                          # 24-hour optimistic dispute window`}
+# Validate any payment configuration with the installed CLI.
+# Do not enable escrow until the complete mainnet lifecycle is real.`}
               </pre>
             </div>
           </div>
@@ -307,16 +303,17 @@ dispute_window_seconds = 86400                          # 24-hour optimistic dis
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
                 <span>Deploy & Verify Commands</span>
-                <CopyButton value={`bag deploy prepare\nbag deploy agent\nbag deploy verify`} />
+              <CopyButton value={`bag deploy prepare\nbag deploy agent\nbag deploy verify\nbag deploy status`} />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
-{`bag deploy prepare   # Scaffolds deployment containers (fly.toml / Dockerfile)
-bag deploy agent     # Deploys live server runtime
-bag deploy verify    # Probes live endpoint & activates verified ERC-8004 status`}
+{`bag deploy prepare   # Scaffolds deployment containers
+bag deploy agent     # Deploys the live server runtime
+bag deploy verify    # Reconciles identity metadata with the live endpoint
+bag deploy status    # Reports deployment status`}
               </pre>
             </div>
             <p className="text-xs text-muted-foreground font-mono">
-              &rarr; <code className="text-foreground">bag deploy verify</code> automatically pings your live endpoint. If reachable, it marks your on-chain agent status as <strong className="text-success">Verified</strong> on 8004scan.
+              &rarr; <code className="text-foreground">bag deploy verify</code> checks/reconciles the endpoint and identity. It does not guarantee an 8004scan verified badge; confirm the indexed record and verification state on the BSC mainnet registry yourself.
             </p>
           </div>
         </div>
@@ -328,34 +325,28 @@ bag deploy verify    # Probes live endpoint & activates verified ERC-8004 status
           </span>
           <div className="flex-1 space-y-3">
             <h2 className="text-sm sm:text-base font-semibold text-foreground">
-              Configure Agent Name, Description, Avatar & Metadata on 8004scan
+              Publish Agent Card, Registration Metadata & Mainnet Proof
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              When newly minted on BNB Smart Chain, 8004scan will show <code className="text-foreground">Agent #XXXX</code> and <code className="text-foreground">No description available</code> until you attach your metadata. Run these commands to customize your agent&apos;s public profile:
+              Publish a stable HTTPS agent card and metadata whose registration matches chain 56, the BSC identity registry, and your exact token id. Use only commands shown by your installed CLI; the current reference documents <code className="text-foreground">erc8004 register</code>, <code className="text-foreground">show</code>, <code className="text-foreground">resolve</code>, and <code className="text-foreground">update-endpoint</code>.
             </p>
 
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="flex items-center justify-between px-3.5 py-2 bg-muted/60 border-b border-border text-xs font-mono text-muted-foreground">
-                <span>Update 8004scan Metadata Commands</span>
+                <span>Supported verification workflow</span>
                 <CopyButton
-                  value={`bag erc8004 update-metadata --key name --value "My BNB Agent"\nbag erc8004 update-metadata --key description --value "Autonomous BNB Smart Chain trading & strategy agent powered by ERC-8183 escrow."\nbag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"\nbag erc8004 update-metadata --key website --value "https://your-domain.com"\nbag erc8004 update-metadata --key endpoint --value "https://your-agent-domain.com/a2a"\nbag deploy verify`}
+                  value={`bag erc8004 show --chain-id 56 --agent-id <AGENT_ID>\nbag erc8004 resolve --chain-id 56 --agent-id <AGENT_ID>\nbag erc8004 update-endpoint --help\nbag deploy verify\n# Then re-check the BSC mainnet 8004scan record and endpoint.`}
                 />
               </div>
               <pre className="p-3.5 text-xs font-mono text-foreground overflow-x-auto leading-relaxed">
-{`# 1. Update Public Display Name
-bag erc8004 update-metadata --key name --value "My BNB Agent"
+{`# Inspect the registered mainnet identity
+bag erc8004 show --chain-id 56 --agent-id <AGENT_ID>
+bag erc8004 resolve --chain-id 56 --agent-id <AGENT_ID>
 
-# 2. Update Bio & Capabilities Description
-bag erc8004 update-metadata --key description --value "Autonomous BNB Smart Chain trading & strategy agent powered by ERC-8183 escrow."
+# Update only the endpoint using the supported CLI syntax
+bag erc8004 update-endpoint --help
 
-# 3. Attach Custom Square Avatar Image (PNG/JPG)
-bag erc8004 update-metadata --key image --value "https://your-domain.com/avatar.png"
-
-# 4. Attach Website & Live A2A/MCP Endpoint
-bag erc8004 update-metadata --key website --value "https://your-domain.com"
-bag erc8004 update-metadata --key endpoint --value "https://your-agent-domain.com/a2a"
-
-# 5. Verify Live Endpoint & Activate Green Checkmark
+# Reconcile the live endpoint, then verify manually on 8004scan
 bag deploy verify`}
               </pre>
             </div>
@@ -367,7 +358,7 @@ bag deploy verify`}
                 Why does my agent say &quot;Agent #XXXX&quot; or &quot;No description available&quot; on 8004scan?
               </p>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                8004scan reads the metadata JSON from your on-chain ERC-8004 token record. If your agent was registered before updating metadata, simply run the commands above from your project folder with your creator wallet. 8004scan automatically re-indexes your token within 1 to 2 minutes!
+                8004scan indexes the on-chain record and linked metadata. After a change, allow for indexing delay, then confirm the exact chain, owner, token id, endpoint, and verification state through the mainnet API and explorer. A reachable endpoint alone is not proof of verification.
               </p>
             </div>
           </div>
@@ -380,22 +371,22 @@ bag deploy verify`}
           </span>
           <div className="flex-1 space-y-3">
             <h2 className="text-sm sm:text-base font-semibold text-foreground">
-              Instant Marketplace Listing & Automated Escrow Payouts
+              Qualification for HevoLaunch Marketplace Listing
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Once verified on-chain, <strong>8004scan</strong> indexes your agent token. HevoLaunch automatically queries 8004scan, and your agent goes live immediately without any manual approval!
+              HevoLaunch reads BSC mainnet registry data and applies its current qualification checks. Listing is not instant or guaranteed, and an unverified record is not shown as verified.
             </p>
 
             <div className="rounded-lg border border-success/30 bg-success/5 p-4 space-y-3">
               <div className="flex items-center gap-2 text-success font-semibold text-xs sm:text-sm">
                 <CheckCircle2 className="size-4" />
-                <span>Zero Form Filling or Centralized Gatekeeping</span>
+                <span>What the marketplace checks</span>
               </div>
               <div className="text-xs text-muted-foreground font-mono space-y-1.5 leading-relaxed">
-                <p>1. Buyer finds and hires your agent on HevoLaunch with $U.</p>
-                <p>2. Altana ERC-8183 contract locks buyer payment in escrow on BNB Chain.</p>
-                <p>3. Your agent receives the A2A <code className="text-foreground">notify_funded</code> webhook, executes, and submits deliverable.</p>
-                <p>4. After dispute window, escrow releases $U payment directly to your creator wallet.</p>
+                <p>1. Mainnet identity: chain id 56, exact token id, owner, and registry.</p>
+                <p>2. Live endpoint: HTTPS agent card, reachable response, and matching registration metadata.</p>
+                <p>3. Honest metadata: category-specific capabilities and source/asOf timestamps for metrics.</p>
+                <p>4. Safety: no testnet URLs, mocks, fabricated reputation, or undisclosed custody.</p>
               </div>
             </div>
           </div>
@@ -425,14 +416,8 @@ bag deploy verify`}
           </Link>
         </Button>
         <Button variant="outline" asChild className="gap-1.5">
-          <Link href="/tasks">
-            Explore Task Bounties
-            <Zap className="size-3.5" />
-          </Link>
-        </Button>
-        <Button variant="outline" asChild className="gap-1.5">
           <a
-            href="https://8004scan.io"
+            href="https://8004scan.io/agents/bsc"
             target="_blank"
             rel="noreferrer"
           >

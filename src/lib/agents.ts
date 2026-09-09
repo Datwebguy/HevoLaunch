@@ -7,7 +7,6 @@ import {
   getFlyioAgentCard,
   extractEndpointFromAgentCard,
 } from "@/lib/flyio-backend";
-import { checkAgentRuntimeHealth } from "@/lib/agent-runtime-service";
 
 /**
  * The hire-ready catalogue. Every entry is a real ERC-8004-registered
@@ -27,6 +26,20 @@ export function getFeaturedAgents(): Agent[] {
   return AGENTS.filter((a) => a.featured);
 }
 
+function normalizeIdentityName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/agent$/, "");
+}
+
+/** Hide older duplicate ERC-8004 registrations when the canonical Hevo record is present. */
+export function isDuplicateOfCurated(scan: { name: string; owner_address: string; token_id: string }, curated: Agent[]): boolean {
+  const scanName = normalizeIdentityName(scan.name);
+  const scanOwner = scan.owner_address.toLowerCase();
+  return curated.some((agent) =>
+    agent.agentIdentityAddress.toLowerCase() === scanOwner &&
+    normalizeIdentityName(agent.name) === scanName
+  );
+}
+
 export function getAgentBySlug(category: CategorySlug, slug: string): Agent | undefined {
   return AGENTS.find((a) => a.category === category && (a.slug === slug || String(a.agentId) === slug));
 }
@@ -42,6 +55,7 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
       a2aEndpoint: null,
       endpointProtocol: "unknown",
       x402Supported: false,
+      dataSource: "unknown",
     };
   }
 
@@ -90,17 +104,19 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
       endpointProtocol = (flyioCard.protocol?.toLowerCase() as "mcp" | "a2a" | "unknown") || "a2a";
     }
 
-    const finalEndpointStatus = flyioCard
-      ? "healthy"
-      : (scan ? scanEndpointStatus(scan) : "healthy");
+    const registryEndpointStatus = scan ? scanEndpointStatus(scan) : "unknown";
+    const finalEndpointStatus = scan?.a2a_endpoint ? registryEndpointStatus : "unknown";
 
     const enriched: Agent = {
       ...agent,
-      verified: Boolean(scan?.is_verified),
+      verified: Boolean(scan?.chain_id === 56 && !scan.is_testnet && scan.is_verified),
       onChainName: scan?.name || agent.name,
-      endpointStatus: finalEndpointStatus,
-      a2aEndpoint: flyioEndpoint || scan?.a2a_endpoint || agent.a2aEndpoint,
-      endpointProtocol: flyioEndpoint ? endpointProtocol : (scan?.a2a_endpoint ? "a2a" : "a2a"),
+      endpointStatus: scan ? finalEndpointStatus : "unknown",
+      // The mainnet registry is the source of truth for the callable endpoint.
+      // A Fly card is useful as a health fallback, but must not replace the
+      // endpoint that the ERC-8004 record proves.
+      a2aEndpoint: scan?.a2a_endpoint || flyioEndpoint || agent.a2aEndpoint,
+      endpointProtocol: scan?.a2a_endpoint ? "a2a" : (flyioEndpoint ? endpointProtocol : "a2a"),
       x402Supported: Boolean(scan?.x402_supported),
       reputation: {
         rating: scan?.total_score ?? 0,
@@ -108,6 +124,8 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
         successRate: 0,
         reviewCount: scan?.total_feedbacks ?? 0,
       },
+      dataSource: scan ? "8004scan" : "unknown",
+      dataUpdatedAt: scan?.updated_at,
     };
 
     enrichedAgentCache.set(cacheKey, { data: enriched, expiresAt: Date.now() + 60_000 });
@@ -127,7 +145,9 @@ export async function enrichAgent(agent: Agent): Promise<Agent> {
 }
 
 export async function getCatalogue(): Promise<Agent[]> {
-  const curated = await Promise.all(AGENTS.map(enrichAgent));
+  const curated = (await Promise.all(AGENTS.map(enrichAgent))).filter(
+    (agent) => agent.identityChainId === 56 && agent.endpointStatus === "healthy"
+  );
   try {
     const liveResults = await Promise.all(
       CATEGORIES.map((cat) => getLiveAgentsForCategory(cat))
@@ -139,7 +159,7 @@ export async function getCatalogue(): Promise<Agent[]> {
       if (live && live.agents) {
         for (const scan of live.agents) {
           // Avoid duplicates with our curated flagship agents
-          if (curated.some((c) => c.agentId === Number(scan.token_id))) continue;
+          if (curated.some((c) => c.agentId === Number(scan.token_id)) || isDuplicateOfCurated(scan, curated)) continue;
           communityAgents.push(scanAgentToAgent(scan, cat.slug));
         }
       }
@@ -160,10 +180,21 @@ export interface CategoryShelf {
  * Homepage shelf per category: returns hire-ready flagship agents
  * alongside qualified community agents from the decentralized registry.
  */
-export async function getCategoryShelf(category: Category): Promise<CategoryShelf> {
-  const [curated, live] = await Promise.all([
-    Promise.all(getAgentsByCategory(category.slug).map(enrichAgent)),
-    getLiveAgentsForCategory(category),
+export async function getCategoryShelf(
+  category: Category,
+  options: { includeLive?: boolean } = {}
+): Promise<CategoryShelf> {
+  const includeLive = options.includeLive ?? true;
+  const [curated, liveResult] = await Promise.all([
+    includeLive
+      ? Promise.all(getAgentsByCategory(category.slug).map(enrichAgent)).then((agents) =>
+          agents.filter((agent) => agent.identityChainId === 56 && agent.endpointStatus === "healthy")
+        )
+      : Promise.resolve([]),
+    includeLive ? getLiveAgentsForCategory(category) : Promise.resolve(null),
   ]);
+  const live = liveResult
+    ? { ...liveResult, agents: liveResult.agents.filter((scan) => !isDuplicateOfCurated(scan, curated)) }
+    : null;
   return { category, curated, live };
 }

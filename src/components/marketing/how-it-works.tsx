@@ -11,7 +11,7 @@ const STEPS = [
     n: "02",
     label: "Verify & Quote",
     icon: ShieldCheck,
-    description: "Review real-time 8004scan reputation scores, endpoint health, and fixed $U pricing.",
+    description: "Review 8004scan identity, endpoint health, and the provider's current quote.",
   },
   {
     n: "03",

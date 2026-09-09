@@ -1,4 +1,4 @@
-import { listAgents, scanEndpointStatus, type ScanAgent } from "@/lib/8004scan";
+import { getAgent, listAgents, MAINNET_CHAIN_ID, scanEndpointStatus, type ScanAgent } from "@/lib/8004scan";
 import { filterQualifiedAgents } from "@/lib/agent-quality";
 import type { Agent, Category, CategorySlug } from "@/lib/types";
 
@@ -20,7 +20,6 @@ import type { Agent, Category, CategorySlug } from "@/lib/types";
  * same kind of listing.
  */
 
-const MAINNET_CHAIN_ID = 56;
 const LIVE_FETCH_LIMIT = 40;
 const LIVE_AGENTS_SHOWN = 8;
 
@@ -45,7 +44,37 @@ export async function getLiveAgentsForCategory(
       sortBy: "total_score",
       limit: trimmed ? LIVE_FETCH_LIMIT : LIVE_FETCH_LIMIT,
     });
-    const { qualified, rejected, scanned } = filterQualifiedAgents(agents);
+    const { qualified: qualityQualified, rejected, scanned } = filterQualifiedAgents(agents);
+    // The registry search endpoint is not a trusted classifier. Require the
+    // category term to appear in the agent's own metadata before displaying
+    // it under that desk, otherwise generic agents get mislabeled repeatedly.
+    const categoryTerm = category.discoveryQuery.toLowerCase();
+    const categoryMatches = qualityQualified.filter((agent) => {
+      const haystack = [agent.name, agent.description, ...(agent.supported_protocols || [])]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(categoryTerm);
+    });
+
+    // The list endpoint omits the detailed health/endpoint object. Hydrate
+    // only category matches before applying the healthy-endpoint gate; this
+    // keeps the catalogue honest without rejecting real healthy records just
+    // because the summary response is sparse.
+    const hydrated = await Promise.all(
+      categoryMatches.slice(0, LIVE_FETCH_LIMIT).map(async (agent) => {
+        try {
+          return await getAgent(MAINNET_CHAIN_ID, agent.token_id);
+        } catch {
+          return agent;
+        }
+      })
+    );
+    const qualified = hydrated.filter((agent) => {
+      // A mainnet record with a healthy live endpoint is displayable. The
+      // separate 8004scan verification flag remains visible and is never
+      // upgraded locally.
+      return agent.is_active !== false && scanEndpointStatus(agent) === "healthy";
+    });
     return {
       agents: qualified.slice(0, LIVE_AGENTS_SHOWN),
       total,
@@ -70,6 +99,9 @@ export function relativeTimeFrom(isoDate: string): string {
 }
 
 export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): Agent {
+  if (scan.chain_id !== MAINNET_CHAIN_ID || scan.is_testnet) {
+    throw new Error("Only BSC mainnet agents can be displayed.");
+  }
   return {
     id: `live-${scan.chain_id}-${scan.token_id}`,
     slug: `live-${scan.token_id}`,
@@ -78,6 +110,7 @@ export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): 
     tagline: scan.description ? scan.description.slice(0, 110).trim() : "Autonomous AI agent registered on BNB Smart Chain",
     description: scan.description || "",
     avatarColor: "#F0B90B",
+    avatarUrl: scan.image_url,
     agentId: Number(scan.token_id),
     agentIdentityAddress: (scan.owner_address || "0x0000000000000000000000000000000000000000") as `0x${string}`,
     identityChainId: scan.chain_id,
@@ -90,10 +123,10 @@ export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): 
       reviewCount: scan.total_feedbacks,
     },
     pricing: {
-      model: "per-task",
-      amount: 0.05,
+      model: "quote",
+      amount: 0,
       currency: "$U",
-      cadence: "per task",
+      cadence: "live provider quote",
     },
     capabilities: scan.supported_protocols && scan.supported_protocols.length > 0
       ? scan.supported_protocols
@@ -103,6 +136,8 @@ export function scanAgentToAgent(scan: ScanAgent, categorySlug?: CategorySlug): 
     endpointStatus: scanEndpointStatus(scan),
     a2aEndpoint: scan.a2a_endpoint || null,
     endpointProtocol: scan.a2a_endpoint ? "a2a" : "unknown",
+    dataSource: "8004scan",
+    dataUpdatedAt: scan.updated_at,
     x402Supported: scan.x402_supported,
   };
 }

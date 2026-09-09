@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { BadgeCheck, Clock } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import type { Agent } from "@/lib/types";
 import { CATEGORY_MAP } from "@/lib/categories";
@@ -8,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 function formatPrice(agent: Agent) {
   const { amount, currency, cadence } = agent.pricing;
+  if (agent.pricing.model === "quote") return "Live quote";
   if (agent.pricing.model === "performance-fee") {
     return `${amount}${cadence}`;
   }
@@ -17,10 +20,13 @@ function formatPrice(agent: Agent) {
 export const AgentCard = memo(function AgentCard({
   agent,
   flush = false,
+  categoryLabel,
 }: {
   agent: Agent;
   flush?: boolean;
+  categoryLabel?: string;
 }) {
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const category = CATEGORY_MAP[agent.category];
   const scoreLabel =
     agent.reputation.reviewCount === 0 && agent.reputation.rating === 0
@@ -39,20 +45,33 @@ export const AgentCard = memo(function AgentCard({
         !flush && "rounded-lg border border-border bg-card"
       )}
     >
-      <span
-        className="flex size-10 items-center justify-center rounded-md text-xs font-semibold text-primary-foreground"
-        style={{ backgroundColor: agent.avatarColor }}
-        aria-hidden
-      >
-        {agent.name.slice(0, 2).toUpperCase()}
-      </span>
+      {agent.avatarUrl && !avatarFailed ? (
+        // Registry avatars are untrusted remote metadata; the alt text stays
+        // empty because the adjacent agent name is the accessible label.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={agent.avatarUrl}
+          alt=""
+          className="size-10 rounded-md object-cover"
+          aria-hidden
+          onError={() => setAvatarFailed(true)}
+        />
+      ) : (
+        <span
+          className="flex size-10 items-center justify-center rounded-md text-xs font-semibold text-primary-foreground"
+          style={{ backgroundColor: agent.avatarColor }}
+          aria-hidden
+        >
+          {agent.name.slice(0, 2).toUpperCase()}
+        </span>
+      )}
 
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground shrink-0">{agent.name}</h3>
           {agent.featured ? (
             <span className="rounded bg-primary/15 text-primary text-[10px] font-medium px-1.5 py-0.5 shrink-0">
-              Flagship
+              Hevo mainnet
             </span>
           ) : (
             <span className="rounded bg-muted text-muted-foreground text-[10px] font-mono px-1.5 py-0.5 shrink-0">
@@ -66,7 +85,9 @@ export const AgentCard = memo(function AgentCard({
             <Clock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Coming soon" />
           )}
           {!flush && (
-            <span className="hidden sm:inline shrink-0 text-xs text-muted-foreground">{category?.shortName}</span>
+            <span className="hidden sm:inline shrink-0 text-xs text-muted-foreground">
+              {categoryLabel || category?.shortName}
+            </span>
           )}
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{agent.tagline}</p>

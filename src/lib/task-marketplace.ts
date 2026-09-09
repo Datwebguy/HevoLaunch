@@ -164,16 +164,13 @@ const PROPOSALS_STORAGE_KEY = "hevolaunch:proposals_v2";
 const DISPUTES_STORAGE_KEY = "hevolaunch:disputes_v2";
 
 export function getStoredTasks(): Task[] {
-  if (typeof window === "undefined") return INITIAL_FEATURED_TASKS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(TASKS_STORAGE_KEY);
-    if (!raw) {
-      window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(INITIAL_FEATURED_TASKS));
-      return INITIAL_FEATURED_TASKS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_FEATURED_TASKS;
+    return [];
   }
 }
 
@@ -196,16 +193,13 @@ export function getTaskById(taskId: string): Task | null {
 }
 
 export function getStoredProposals(): TaskProposal[] {
-  if (typeof window === "undefined") return INITIAL_PROPOSALS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(PROPOSALS_STORAGE_KEY);
-    if (!raw) {
-      window.localStorage.setItem(PROPOSALS_STORAGE_KEY, JSON.stringify(INITIAL_PROPOSALS));
-      return INITIAL_PROPOSALS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_PROPOSALS;
+    return [];
   }
 }
 
@@ -231,7 +225,9 @@ export function acceptProposalAndFund(taskId: string, proposal: TaskProposal): v
   task.assignedProviderName = proposal.providerName;
   task.budget = proposal.proposedBudget;
   task.updatedAt = Date.now();
-  task.escrowTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
+  // Task bounties are not wired to a mainnet escrow transaction yet.
+  // Never fabricate a transaction hash or present a local mutation as funded.
+  task.escrowTxHash = undefined;
   saveTask(task);
 
   // Update proposal status
@@ -268,16 +264,13 @@ export function acceptTaskDeliverable(taskId: string): void {
 }
 
 export function getStoredDisputes(): TaskDispute[] {
-  if (typeof window === "undefined") return INITIAL_DISPUTES;
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(DISPUTES_STORAGE_KEY);
-    if (!raw) {
-      window.localStorage.setItem(DISPUTES_STORAGE_KEY, JSON.stringify(INITIAL_DISPUTES));
-      return INITIAL_DISPUTES;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_DISPUTES;
+    return [];
   }
 }
 

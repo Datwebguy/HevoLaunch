@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from "react";
 import type { Agent, HireSession } from "@/lib/types";
-import type { Task } from "@/lib/task-marketplace";
 
 export type ActivityEventType =
   | "job_settled"
@@ -225,61 +224,6 @@ export function getAgentActivity(agentOrId: AgentActivityIdentifier): AgentActiv
     console.error("Failed to read hire sessions for activity feed:", e);
   }
 
-  // 2. Process Task Marketplace executions
-  try {
-    const rawTasks = localStorage.getItem("hevolaunch:tasks_v2") || localStorage.getItem("hevolaunch_tasks_v1");
-    if (rawTasks) {
-      const parsed: Task[] = JSON.parse(rawTasks);
-      if (Array.isArray(parsed)) {
-        const agentTasks = parsed.filter((t) => matchesAgent(t, agentOrId));
-
-        for (const t of agentTasks) {
-          const isAccepted = t.status === "accepted";
-          const isDelivered = t.status === "delivered";
-          const isInProgress = t.status === "in_progress" || t.status === "funded";
-
-          const type: ActivityEventType = isAccepted
-            ? "job_settled"
-            : isDelivered
-            ? "deliverable_submitted"
-            : "job_hired";
-
-          const title = isAccepted
-            ? "Task Bounty Completed & Settled"
-            : isDelivered
-            ? "Task Deliverable Submitted"
-            : isInProgress
-            ? "Task Bounty In Progress"
-            : "Task Bounty Published";
-
-          activities.push({
-            id: `task-${t.id}`,
-            agentId: typeof agentOrId === "object" && agentOrId !== null ? agentOrId.agentId || agentOrId.id || t.id : t.id,
-            agentSlug: typeof agentOrId === "object" && agentOrId !== null ? agentOrId.slug : undefined,
-            type,
-            title,
-            description: t.description || t.title,
-            amount: t.budget ? `${t.budget} ${t.currency || "$U"}` : undefined,
-            client: t.createdBy
-              ? `${t.createdBy.slice(0, 6)}...${t.createdBy.slice(-4)}`
-              : undefined,
-            txHash: t.escrowTxHash,
-            jobId: t.id,
-            timestamp: new Date(t.deliveredAt || t.updatedAt || t.createdAt || Date.now()).toISOString(),
-            status: isAccepted ? "COMPLETED" : isDelivered ? "SUBMITTED" : isInProgress ? "FUNDED" : "OPEN",
-            deliverableSummary: t.deliverableUrl
-              ? `Deliverable: ${t.deliverableUrl}${t.deliverableNotes ? ` (${t.deliverableNotes})` : ""}`
-              : t.deliverableNotes
-              ? t.deliverableNotes
-              : undefined,
-          });
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Failed to read task marketplace for activity feed:", e);
-  }
-
   // Deduplicate by ID and sort descending by timestamp
   const seenIds = new Set<string>();
   const deduped: AgentActivityItem[] = [];
@@ -310,21 +254,19 @@ export function getAgentActivityStats(activities: AgentActivityItem[]): AgentAct
   return {
     totalJobsCompleted: completedJobs.length,
     totalVolumeU: Number(totalVolume.toFixed(2)),
-    avgResponseTime: activities.length > 0 ? "~25s" : "N/A",
-    successRate: activities.length > 0 ? "100%" : "N/A",
+    avgResponseTime: "N/A — no verified mainnet source",
+    successRate: "N/A — no verified mainnet source",
   };
 }
 
 // Client synchronization hooks
-const activityCache = new Map<string, { rawHire: string | null; rawTask: string | null; parsed: AgentActivityItem[] }>();
+const activityCache = new Map<string, { rawHire: string | null; parsed: AgentActivityItem[] }>();
 
 function subscribe(callback: () => void) {
   window.addEventListener("hevolaunch:hire-sessions-changed", callback);
-  window.addEventListener("hevolaunch:tasks-changed", callback);
   window.addEventListener("storage", callback);
   return () => {
     window.removeEventListener("hevolaunch:hire-sessions-changed", callback);
-    window.removeEventListener("hevolaunch:tasks-changed", callback);
     window.removeEventListener("storage", callback);
   };
 }
@@ -342,13 +284,12 @@ export function useAgentActivity(agentOrId: AgentActivityIdentifier): AgentActiv
     () => {
       if (typeof window === "undefined") return EMPTY_ACTIVITIES;
       const rawHire = localStorage.getItem("hevolaunch:hire-sessions");
-      const rawTask = localStorage.getItem("hevolaunch:tasks_v2") || localStorage.getItem("hevolaunch_tasks_v1");
       const cached = activityCache.get(agentKey);
-      if (cached && cached.rawHire === rawHire && cached.rawTask === rawTask) {
+      if (cached && cached.rawHire === rawHire) {
         return cached.parsed;
       }
       const activities = getAgentActivity(agentOrId);
-      activityCache.set(agentKey, { rawHire, rawTask, parsed: activities });
+      activityCache.set(agentKey, { rawHire, parsed: activities });
       return activities;
     },
     () => EMPTY_ACTIVITIES

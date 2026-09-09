@@ -54,9 +54,6 @@ export interface DeliverableReport {
   rawDeliverableHash?: string;
 }
 
-// Fallback reference price for BNB/USD
-export const REFERENCE_BNB_PRICE = 614.5;
-
 // In-memory cache for live wallet audits (10-second TTL to avoid redundant RPC calls)
 const auditCache = new Map<string, { data: AuditedWalletBalances; expiresAt: number }>();
 
@@ -138,7 +135,7 @@ export async function fetchLiveWalletAudit(targetAddress: string): Promise<Audit
   });
 
   try {
-    const [nativeBalanceWei, uBalanceWei] = await Promise.all([
+    const [nativeBalanceWei, uBalanceWei, priceResponse] = await Promise.all([
       client.getBalance({ address: targetAddress as `0x${string}` }),
       client.readContract({
         address: PAYMENT_TOKEN_ADDRESS,
@@ -146,11 +143,21 @@ export async function fetchLiveWalletAudit(targetAddress: string): Promise<Audit
         functionName: "balanceOf",
         args: [targetAddress as `0x${string}`],
       }),
+      fetch("https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT", {
+        signal: AbortSignal.timeout(5000),
+      }),
     ]);
+
+    if (!priceResponse.ok) throw new Error(`BNB price source returned ${priceResponse.status}`);
+    const pricePayload = (await priceResponse.json()) as { price?: string };
+    const referenceBnbPrice = Number(pricePayload.price);
+    if (!Number.isFinite(referenceBnbPrice) || referenceBnbPrice <= 0) {
+      throw new Error("BNB price source returned an invalid price");
+    }
 
     const nativeBnb = Number(formatUnits(nativeBalanceWei, 18));
     const uToken = Number(formatUnits(uBalanceWei, 18));
-    const nativeBnbUsd = nativeBnb * REFERENCE_BNB_PRICE;
+    const nativeBnbUsd = nativeBnb * referenceBnbPrice;
     const uTokenUsd = uToken * 1.0;
     const totalPortfolioUsd = nativeBnbUsd + uTokenUsd;
 
@@ -163,7 +170,7 @@ export async function fetchLiveWalletAudit(targetAddress: string): Promise<Audit
       uTokenWei: uBalanceWei,
       uTokenUsd,
       totalPortfolioUsd,
-      referenceBnbPrice: REFERENCE_BNB_PRICE,
+      referenceBnbPrice,
       bnbWeightPercent: totalPortfolioUsd > 0 ? (nativeBnbUsd / totalPortfolioUsd) * 100 : 0,
       uWeightPercent: totalPortfolioUsd > 0 ? (uTokenUsd / totalPortfolioUsd) * 100 : 0,
       auditedAt: Date.now(),
@@ -175,31 +182,7 @@ export async function fetchLiveWalletAudit(targetAddress: string): Promise<Audit
     return data;
   } catch (err) {
     console.warn("Failed to query live on-chain balances from BSC:", err);
-
-    // Dynamic deterministic fallback based on target address
-    const isEoa = targetAddress.toLowerCase().includes("75a0");
-    const fallbackBnb = isEoa ? 0.0382 : 0.0091;
-    const fallbackU = isEoa ? 9.7 : 0.2;
-    const nativeBnbUsd = fallbackBnb * REFERENCE_BNB_PRICE;
-    const uTokenUsd = fallbackU * 1.0;
-    const totalPortfolioUsd = nativeBnbUsd + uTokenUsd;
-
-    return {
-      address: targetAddress,
-      nativeBnb: fallbackBnb,
-      nativeBnbWei: BigInt(38200000000000000),
-      nativeBnbUsd,
-      uToken: fallbackU,
-      uTokenWei: BigInt(200000000000000000),
-      uTokenUsd,
-      totalPortfolioUsd,
-      referenceBnbPrice: REFERENCE_BNB_PRICE,
-      bnbWeightPercent: (nativeBnbUsd / totalPortfolioUsd) * 100,
-      uWeightPercent: (uTokenUsd / totalPortfolioUsd) * 100,
-      auditedAt: Date.now(),
-      isLiveOnChain: false,
-      network: "BNB Smart Chain",
-    };
+    throw new Error("Live BSC balance audit unavailable; no fallback data is permitted.");
   }
 }
 
@@ -258,8 +241,6 @@ export function buildDynamicDeliverable(
       sellTiers.push(`$${sellPrice} (${uPerTier.toFixed(2)} $U)`);
     }
 
-    const projectedMonthlyYield = (totalPortfolioUsd * 0.0275).toFixed(2);
-
     return {
       title: isJob1028
         ? "BNB Smart Chain Geometric Grid Strategy (Balanced Range)"
@@ -274,10 +255,10 @@ export function buildDynamicDeliverable(
       metrics: [
         { label: "Audited Portfolio", value: `$${totalPortfolioUsd.toFixed(2)} USD`, variant: "default" },
         { label: "Reference Price", value: `$${referenceBnbPrice.toFixed(2)} / BNB` },
-        { label: "Target 30D Grid APR", value: isJob1028 ? "+32.6%" : "+38.4%", variant: "success" },
+        { label: "Target 30D Grid APR", value: "Unavailable — no verified backtest source" },
         { label: "Grid Range", value: `$${lowerBand}.00 to $${upperBand}.00` },
         { label: "Grid Density", value: `${gridCount} Active Tiers` },
-        { label: "Projected 30D Return", value: `+$${projectedMonthlyYield} / mo`, variant: "success" },
+        { label: "Projected 30D Return", value: "Unavailable — no verified backtest source" },
       ],
       sections: [
         {
@@ -319,7 +300,7 @@ export function buildDynamicDeliverable(
         "Enable the Hevo auto-compounding fee harvest worker to claim trading fees every 48 hours.",
       ],
       protocolRecommendations: ["PancakeSwap V3 (BNB Chain)", "Binance Oracle Price Feed", "Altana ERC-8183"],
-      rawDeliverableHash: session.deliverableUrl || `ipfs://bafybeigridplan${jobId}bnbchain56`,
+      rawDeliverableHash: session.deliverableUrl,
     };
   }
 
@@ -351,7 +332,7 @@ export function buildDynamicDeliverable(
         { label: "Audited Valuation", value: `$${totalPortfolioUsd.toFixed(2)} USD`, variant: "default" },
         { label: "Current BNB Weight", value: `${bnbWeightPercent.toFixed(1)}%`, variant: bnbWeightPercent > 55 ? "warning" : "default" },
         { label: "Current $U Weight", value: `${uWeightPercent.toFixed(1)}%`, variant: "default" },
-        { label: "Target Sharpe Ratio", value: "2.38 (from 1.54)", variant: "success" },
+        { label: "Target Sharpe Ratio", value: "Unavailable — no verified performance source" },
         { label: "Rebalance Deviation", value: `${Math.abs(bnbDelta).toFixed(1)}%`, variant: Math.abs(bnbDelta) > 5 ? "warning" : "default" },
         { label: "Required Trades", value: "1 Atomic Swap" },
       ],
@@ -385,7 +366,7 @@ export function buildDynamicDeliverable(
         "Set rebalance drift alarm to trigger when portfolio diverges > 5.0% from target weights.",
       ],
       protocolRecommendations: ["PancakeSwap V3", "1inch BSC Aggregator", "Pyth Oracle"],
-      rawDeliverableHash: session.deliverableUrl || `ipfs://bafybeirebalanceplan${jobId}bnbchain56`,
+      rawDeliverableHash: session.deliverableUrl,
     };
   }
 
@@ -395,11 +376,9 @@ export function buildDynamicDeliverable(
   if (category === "yield-optimisation" || session.agentSlug.includes("yield")) {
     const venusBnbAllocation = nativeBnb * 0.6;
     const listaBnbAllocation = nativeBnb * 0.35;
-    const projectedAnnualYield = (totalPortfolioUsd * 0.152).toFixed(2);
-
     return {
       title: "Cross-Protocol BNB Chain Yield Maximization Strategy",
-      summary: `On-chain yield audit completed for wallet ${shortAddr} (${walletInfo.sourceLabel}). Analyzed liquidity pools across Venus Protocol, Lista DAO, and Aave V3. Formulated a 3-tier staking and lending loop for your ${nativeBnb.toFixed(4)} BNB and ${uToken.toFixed(2)} $U yielding +15.2% net APY.`,
+      summary: `Live wallet balances were audited for ${shortAddr} (${walletInfo.sourceLabel}). Yield routing recommendations require a verified live market/APR source and are not asserted here.`,
       targetWallet,
       walletSourceInfo: walletInfo,
       generatedAt: session.updatedAt || Date.now(),
@@ -408,11 +387,11 @@ export function buildDynamicDeliverable(
       auditedBalances: balances,
       metrics: [
         { label: "Audited Capital", value: `$${totalPortfolioUsd.toFixed(2)} USD`, variant: "default" },
-        { label: "Venus Supply APY", value: "4.2% + 1.8% XVS" },
-        { label: "Lista DAO Staking", value: "8.6% APY (slisBNB)" },
-        { label: "Blended Net APY", value: "15.2%", variant: "success" },
-        { label: "Projected Annual Yield", value: `+$${projectedAnnualYield} / yr`, variant: "success" },
-        { label: "Protocol Risk Level", value: "Tier 1 Audited", variant: "success" },
+        { label: "Venus Supply APY", value: "Unavailable — live market source required" },
+        { label: "Lista DAO Staking", value: "Unavailable — live market source required" },
+        { label: "Blended Net APY", value: "Unavailable — live market source required" },
+        { label: "Projected Annual Yield", value: "Unavailable — live market source required" },
+        { label: "Protocol Risk Level", value: "Unavailable — protocol risk source required" },
       ],
       sections: [
         {
@@ -420,10 +399,10 @@ export function buildDynamicDeliverable(
           items: [
             { key: "Target Wallet Address", value: targetWallet },
             { key: "Audit Origin Source", value: `${walletInfo.sourceLabel}` },
-            { key: "Venus Protocol (Supply)", value: `Deposit ${venusBnbAllocation.toFixed(4)} BNB ($${(venusBnbAllocation * referenceBnbPrice).toFixed(2)}) @ 6.0% APY` },
-            { key: "Lista DAO (Liquid Stake)", value: `Stake ${listaBnbAllocation.toFixed(4)} BNB -> mint slisBNB @ 8.6% APY` },
-            { key: "Venus Core Stable Vault", value: `Supply ${uToken.toFixed(2)} $U stablecoins @ 10.4% APY` },
-            { key: "Combined Net APY", value: "15.2% Net Blended Yield" },
+            { key: "Venus Protocol (Supply)", value: `${venusBnbAllocation.toFixed(4)} BNB allocation; APR unavailable` },
+            { key: "Lista DAO (Liquid Stake)", value: `${listaBnbAllocation.toFixed(4)} BNB allocation; APR unavailable` },
+            { key: "Venus Core Stable Vault", value: `${uToken.toFixed(2)} $U allocation; APR unavailable` },
+            { key: "Combined Net APY", value: "Unavailable — live market source required" },
           ],
         },
       ],
@@ -433,21 +412,16 @@ export function buildDynamicDeliverable(
         `Deposit ${uToken.toFixed(2)} $U into Venus high-yield stable vault.`,
       ],
       protocolRecommendations: ["Venus Protocol", "Lista DAO", "Aave V3 BNB"],
-      rawDeliverableHash: session.deliverableUrl || `ipfs://bafybeiyieldplan${jobId}bnbchain56`,
+      rawDeliverableHash: session.deliverableUrl,
     };
   }
 
   // -------------------------------------------------------------
   // 4. HEALTH FACTOR & RISK SENTINEL AGENTS
   // -------------------------------------------------------------
-  const simDebtUsd = Math.max(uToken * 0.6, 0.5);
-  const healthFactor = (nativeBnbUsd / Math.max(simDebtUsd, 0.1)).toFixed(2);
-  const liquidationPrice = (referenceBnbPrice * 0.45).toFixed(2);
-  const cushionPct = "-55.0%";
-
   return {
     title: "On-Chain Lending Health & Liquidation Risk Sentinel Report",
-    summary: `Real-time position health audited for wallet ${shortAddr} (${walletInfo.sourceLabel}). Total audited collateral value is $${nativeBnbUsd.toFixed(2)} across ${nativeBnb.toFixed(4)} BNB. Position sits in the SAFE zone with a 55.0% market downturn cushion before liquidation risk.`,
+    summary: `Live wallet balances were audited for ${shortAddr} (${walletInfo.sourceLabel}). Lending health factor data is unavailable until a verified Venus/Aave position source is connected.`,
     targetWallet,
     walletSourceInfo: walletInfo,
     generatedAt: session.updatedAt || Date.now(),
@@ -456,10 +430,10 @@ export function buildDynamicDeliverable(
     auditedBalances: balances,
     metrics: [
       { label: "Audited Collateral", value: `$${nativeBnbUsd.toFixed(2)} (${nativeBnb.toFixed(4)} BNB)`, variant: "default" },
-      { label: "Health Factor", value: `${healthFactor} (SAFE)`, variant: "success" },
-      { label: "Liquidation Price", value: `$${liquidationPrice} / BNB` },
-      { label: "Drawdown Cushion", value: cushionPct, variant: "success" },
-      { label: "Collateral Ratio", value: `${(Number(healthFactor) * 100).toFixed(0)}%` },
+      { label: "Health Factor", value: "Unavailable — lending position source required" },
+      { label: "Liquidation Price", value: "Unavailable — lending position source required" },
+      { label: "Drawdown Cushion", value: "Unavailable — lending position source required" },
+      { label: "Collateral Ratio", value: "Unavailable — lending position source required" },
     ],
     sections: [
       {
@@ -469,18 +443,17 @@ export function buildDynamicDeliverable(
           { key: "Audit Origin Source", value: `${walletInfo.sourceLabel}` },
           { key: "Audited Collateral Asset", value: `${nativeBnb.toFixed(4)} BNB (Value: $${nativeBnbUsd.toFixed(2)})` },
           { key: "Stable Reserve Holding", value: `${uToken.toFixed(2)} $U ($${uTokenUsd.toFixed(2)})` },
-          { key: "Critical Liquidation Price", value: `$${liquidationPrice} per BNB (Current: $${referenceBnbPrice.toFixed(2)})` },
-          { key: "Risk Status", value: "SAFE: Zero liquidation risk under current market volatility" },
+          { key: "Critical Liquidation Price", value: "Unavailable — lending position source required" },
+          { key: "Risk Status", value: "Unavailable — no verified lending position data" },
         ],
       },
     ],
     actionableSteps: [
-      "No immediate collateral top-up required (Health Factor well above 1.30 safety threshold).",
-      `Set automated alert notification if BNB price falls below $${(referenceBnbPrice * 0.7).toFixed(2)}.`,
+      "No action recommendation is available until the lending position is read from a verified protocol source.",
       `Maintain ${uToken.toFixed(2)} $U as emergency debt repayment reserve.`,
     ],
     protocolRecommendations: ["Venus Lending", "Binance Oracle Liquidation Engine", "Altana Sentry"],
-    rawDeliverableHash: session.deliverableUrl || `ipfs://bafybeisentinelplan${jobId}bnbchain56`,
+    rawDeliverableHash: session.deliverableUrl,
   };
 }
 
@@ -498,31 +471,17 @@ export function getDeliverableForJob(
   if (liveBalances && liveBalances.address.toLowerCase() === targetWallet.toLowerCase()) {
     return buildDynamicDeliverable(session, liveBalances, currentWallet, customWallet);
   }
-
-  // Generate initial reference calculation for target wallet
-  const isEoa = targetWallet.toLowerCase().includes("75a0");
-  const fallbackBnb = isEoa ? 0.0382 : 0.0091;
-  const fallbackU = isEoa ? 9.7 : 0.2;
-  const nativeBnbUsd = fallbackBnb * REFERENCE_BNB_PRICE;
-  const uTokenUsd = fallbackU * 1.0;
-  const totalPortfolioUsd = nativeBnbUsd + uTokenUsd;
-
-  const defaultBalances: AuditedWalletBalances = {
-    address: targetWallet,
-    nativeBnb: fallbackBnb,
-    nativeBnbWei: BigInt(Math.round(fallbackBnb * 1e18)),
-    nativeBnbUsd,
-    uToken: fallbackU,
-    uTokenWei: BigInt(Math.round(fallbackU * 1e18)),
-    uTokenUsd,
-    totalPortfolioUsd,
-    referenceBnbPrice: REFERENCE_BNB_PRICE,
-    bnbWeightPercent: (nativeBnbUsd / totalPortfolioUsd) * 100,
-    uWeightPercent: (uTokenUsd / totalPortfolioUsd) * 100,
-    auditedAt: Date.now(),
-    isLiveOnChain: false,
-    network: "BNB Smart Chain",
+  return {
+    title: "Deliverable unavailable until live BSC data is available",
+    summary: "The live BSC balance audit has not completed. No fallback balances, prices, performance metrics, or health-factor claims are shown.",
+    targetWallet,
+    walletSourceInfo: getTargetWalletInfo(session.task, session, currentWallet, customWallet),
+    generatedAt: Date.now(),
+    jobId: session.jobId || "pending",
+    budgetFormatted: `${(Number(session.budget) / 1e18).toFixed(2)} $U`,
+    metrics: [{ label: "Audit status", value: "Waiting for verified BSC RPC data" }],
+    sections: [],
+    actionableSteps: [],
+    protocolRecommendations: [],
   };
-
-  return buildDynamicDeliverable(session, defaultBalances, currentWallet, customWallet);
 }

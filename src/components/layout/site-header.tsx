@@ -57,9 +57,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-card/85 backdrop-blur-md transition-colors">
-      <div className="page-wrap flex h-14 items-center justify-between gap-3 sm:gap-6">
+      <div className="page-wrap flex h-14 min-w-0 items-center justify-between gap-2 overflow-hidden sm:gap-6">
         {/* LOGO & DESKTOP NAV */}
-        <div className="flex items-center gap-6 min-w-0">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-6">
           <Link href="/" className="flex shrink-0 items-center gap-2.5 group">
             <HevoLogo size={30} />
             <span className="font-heading text-sm sm:text-base font-semibold tracking-tight text-foreground">
@@ -139,17 +139,6 @@ export function SiteHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link
-              href="/tasks"
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs lg:text-sm font-medium transition-colors whitespace-nowrap",
-                pathname.startsWith("/tasks")
-                  ? "bg-muted font-semibold text-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              )}
-            >
-              Task Marketplace
-            </Link>
 
             <Link
               href="/dashboard"
@@ -166,7 +155,7 @@ export function SiteHeader() {
         </div>
 
         {/* RIGHT ACTIONS */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Network indicator pill */}
           <div
             className={cn(
@@ -189,7 +178,7 @@ export function SiteHeader() {
             variant="outline"
             size="sm"
             asChild
-            className="hidden sm:inline-flex text-xs font-medium border-border/80 hover:border-primary/50 gap-1.5"
+            className="hidden xl:inline-flex text-xs font-medium border-border/80 hover:border-primary/50 gap-1.5"
           >
             <Link href="/become-a-provider">
               <Terminal className="size-3.5 text-primary" />
@@ -200,7 +189,7 @@ export function SiteHeader() {
             variant="ghost"
             size="sm"
             asChild
-            className="hidden xl:inline-flex text-xs font-medium gap-1.5"
+            className="hidden lg:inline-flex text-xs font-medium gap-1.5"
           >
             <Link href="/register">Register agent</Link>
           </Button>
@@ -240,17 +229,6 @@ export function SiteHeader() {
                       )}
                     >
                       All Agents
-                    </Link>
-                    <Link
-                      href="/tasks"
-                      className={cn(
-                        "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                        pathname.startsWith("/tasks")
-                          ? "bg-muted font-semibold text-foreground"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                      )}
-                    >
-                      Task Marketplace
                     </Link>
                     <Link
                       href="/dashboard"

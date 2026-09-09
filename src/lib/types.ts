@@ -48,7 +48,7 @@ export interface AgentReputation {
  * curated-listing display purposes.
  */
 export interface AgentPricing {
-  model: "per-session" | "per-task" | "subscription" | "performance-fee";
+  model: "per-session" | "per-task" | "subscription" | "performance-fee" | "quote";
   amount: number;
   currency: "USDC" | "BNB" | "$U";
   /** Human readable cadence, e.g. "per month", "per rebalance". */
@@ -56,6 +56,7 @@ export interface AgentPricing {
 }
 
 export type EndpointProtocol = "mcp" | "a2a" | "unknown";
+export type AgentDataSource = "8004scan" | "mainnet-rpc" | "unknown";
 
 export interface Agent {
   id: string;
@@ -65,6 +66,8 @@ export interface Agent {
   tagline: string;
   description: string;
   avatarColor: string;
+  /** Optional avatar URL supplied by the verified ERC-8004 record. */
+  avatarUrl?: string | null;
   /**
    * ERC-8004 identity token id — a token in the identity registry whose
    * tokenURI is this agent's registration record (see lib/erc8004.ts).
@@ -91,6 +94,9 @@ export interface Agent {
   endpointProtocol?: EndpointProtocol;
   /** Whether the agent supports x402 payment protocol for per-request payments. */
   x402Supported?: boolean;
+  /** Provenance for displayed registry metrics and the last registry update time. */
+  dataSource?: AgentDataSource;
+  dataUpdatedAt?: string;
 }
 
 /**
@@ -151,6 +157,8 @@ export interface HireSession {
   /** The agent's ERC-8004 identity address — the ERC-8183 `provider`. */
   provider: `0x${string}`;
   task: string;
+  /** Signed quote JSON anchored into the ERC-8183 job description, when quoted. */
+  executionTask?: string;
   /** Escrowed amount in raw $U units (18 decimals), as a string. */
   budget: string;
   /** Unix seconds after which an unfunded/undelivered job can be reclaimed. */
@@ -218,10 +226,14 @@ export interface X402PaymentResponse {
 export interface EndpointCallRequest {
   /** The agent endpoint to call. */
   endpoint: string;
+  /** ERC-8004 identity used by the server-side mainnet allowlist. */
+  agentId?: number;
+  /** ERC-8004 registry chain; HevoLaunch only accepts BSC mainnet (56). */
+  chainId?: number;
   /** Method to call (for MCP/A2A protocols). */
   method?: string;
   /** Parameters for the endpoint call. */
-  parameters?: Record<string, string | number | boolean | null | undefined>;
+  parameters?: Record<string, unknown>;
   /** Whether this requires x402 payment. */
   requiresPayment: boolean;
   /** Payment details if payment is required. */
@@ -232,7 +244,7 @@ export interface EndpointCallResponse {
   /** Whether the call was successful. */
   success: boolean;
   /** Response data from the agent. */
-  data?: Record<string, string | number | boolean | null | undefined>;
+  data?: Record<string, unknown>;
   /** Error message if the call failed. */
   error?: string;
   /** Payment result if payment was involved. */

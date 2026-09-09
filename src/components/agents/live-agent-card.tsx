@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { BadgeCheck, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 import type { ScanAgent } from "@/lib/8004scan";
 import { relativeTimeFrom } from "@/lib/live-agents";
@@ -12,6 +15,8 @@ export function LiveAgentCard({
   agent: ScanAgent;
   flush?: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
   return (
     <Link
       href={`/agents/live/${agent.chain_id}/${agent.token_id}`}
@@ -20,13 +25,14 @@ export function LiveAgentCard({
         !flush && "rounded-lg border border-border bg-card"
       )}
     >
-      {agent.image_url ? (
+      {agent.image_url && !imageFailed ? (
         // eslint-disable-next-line @next/next/no-img-element -- arbitrary remote hosts from live registrations
         <img
           src={agent.image_url}
           alt=""
           className="size-10 rounded-md object-cover"
           aria-hidden
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <span
@@ -42,6 +48,11 @@ export function LiveAgentCard({
           <h3 className="truncate text-sm font-medium text-foreground">{agent.name}</h3>
           {agent.is_verified && (
             <BadgeCheck className="size-3.5 shrink-0 text-success" aria-label="Verified agent" />
+          )}
+          {!agent.is_verified && (
+            <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-300">
+              Verification pending
+            </span>
           )}
         </div>
         <p className="truncate text-xs text-muted-foreground">

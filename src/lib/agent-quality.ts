@@ -16,7 +16,8 @@ export type RejectReason =
   | "gibberish-name"
   | "thin-description"
   | "no-endpoint"
-  | "unhealthy-endpoint";
+  | "unhealthy-endpoint"
+  | "test-or-demo";
 
 export interface QualifyResult {
   ok: boolean;
@@ -66,6 +67,10 @@ export function qualifyScanAgent(agent: ScanAgent): QualifyResult {
     reasons.push("not-mainnet");
   }
   const name = (agent.name ?? "").trim();
+  const searchableText = `${name} ${agent.description ?? ""}`.toLowerCase();
+  if (/\b(test|demo|mock|dummy|fixture)\b|not for production/.test(searchableText)) {
+    reasons.push("test-or-demo");
+  }
   if (!name || PLACEHOLDER_NAME.test(name) || /^agent\s*#\d+$/i.test(name)) {
     reasons.push("placeholder-name");
   } else if (looksGibberishName(name)) {

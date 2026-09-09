@@ -25,9 +25,6 @@ export function SiteFooter() {
           <Link href="/become-a-provider" className="hover:text-foreground transition-colors">
             Provider Guide
           </Link>
-          <Link href="/tasks" className="hover:text-foreground transition-colors">
-            Task Marketplace
-          </Link>
           <a
             href="https://bscscan.com"
             target="_blank"

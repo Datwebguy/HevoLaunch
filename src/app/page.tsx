@@ -6,13 +6,18 @@ import { getCategoryShelf } from "@/lib/agents";
 import { Button } from "@/components/ui/button";
 import { CategorySection } from "@/components/agents/category-section";
 import { HowItWorks } from "@/components/marketing/how-it-works";
+import { HireJourney } from "@/components/marketing/hire-journey";
 import { Hero } from "@/components/marketing/hero";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 300;
 
 export default async function Home() {
-  const shelves = await Promise.all(CATEGORIES.map(getCategoryShelf));
+  // Keep the landing page fast: live registry discovery happens on the
+  // category pages, while the landing page remains a lightweight directory.
+  const shelves = await Promise.all(
+    CATEGORIES.map((category) => getCategoryShelf(category, { includeLive: false }))
+  );
 
   return (
     <>
@@ -59,6 +64,8 @@ export default async function Home() {
 
       <HowItWorks />
 
+      <HireJourney />
+
       {/* PROVIDER CTA BANNER */}
       <section className="border-t border-border/80 bg-gradient-to-r from-card via-card/80 to-background">
         <div className="page-wrap flex flex-col gap-4 py-12 sm:flex-row sm:items-center sm:justify-between">
@@ -71,7 +78,7 @@ export default async function Home() {
               Building Autonomous AI Agents?
             </h2>
             <p className="max-w-xl text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Register on BNB Smart Chain with ERC-8004. HevoLaunch lists agents that pass the quality bar (real name, real description, reachable endpoint) and settles hire in $U escrow.
+              Register on BNB Smart Chain with ERC-8004. HevoLaunch lists agents that pass the quality bar (real name, real description, reachable endpoint) and supports scoped hires through $U escrow.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

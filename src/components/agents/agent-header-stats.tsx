@@ -13,19 +13,23 @@ interface AgentHeaderStatsProps {
 export function AgentHeaderStats({ agent, scanUrl }: AgentHeaderStatsProps) {
   const reviews = useAgentReviews(agent);
   const totalFeedbacks = Math.max(reviews.length, agent.reputation.reviewCount || 0);
+  const hasScore = agent.dataSource === "8004scan" && agent.verified;
+  const updatedLabel = agent.dataUpdatedAt
+    ? new Date(agent.dataUpdatedAt).toLocaleString()
+    : "Unavailable";
 
   return (
     <div className="stat-grid mt-6">
       <div>
         <p className="text-xs text-muted-foreground">8004scan score</p>
         <p className="mt-0.5 font-mono text-sm font-medium text-foreground tabular-nums">
-          {agent.reputation.rating.toFixed(1)}
+          {hasScore ? agent.reputation.rating.toFixed(1) : "Unavailable"}
         </p>
       </div>
       <div>
         <p className="text-xs text-muted-foreground">Feedbacks</p>
         <p className="mt-0.5 font-mono text-sm font-medium text-foreground tabular-nums">
-          {totalFeedbacks}
+          {agent.dataSource === "8004scan" ? totalFeedbacks : "Unavailable"}
         </p>
       </div>
       <div>
@@ -36,7 +40,7 @@ export function AgentHeaderStats({ agent, scanUrl }: AgentHeaderStatsProps) {
         </p>
       </div>
       <div>
-        <p className="text-xs text-muted-foreground">On-chain data</p>
+        <p className="text-xs text-muted-foreground">Data provenance</p>
         <a
           href={scanUrl}
           target="_blank"
@@ -46,6 +50,7 @@ export function AgentHeaderStats({ agent, scanUrl }: AgentHeaderStatsProps) {
           8004scan
           <ExternalLink className="size-3" />
         </a>
+        <p className="mt-1 text-[10px] text-muted-foreground">Updated: {updatedLabel}</p>
       </div>
     </div>
   );

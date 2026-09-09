@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import type { Agent, Category, CategorySlug } from "@/lib/types";
+import { CATEGORY_MAP } from "@/lib/categories";
 import { AgentCard } from "@/components/agents/agent-card";
 import { Input } from "@/components/ui/input";
 import {
@@ -145,10 +146,31 @@ export function AgentSearch({
       </p>
 
       {filtered.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {filtered.map((agent) => (
-            <AgentCard key={agent.id} agent={agent} />
-          ))}
+        <div className="mt-3 space-y-6">
+          {(category === "all" ? categories : categories.filter((item) => item.slug === category)).map(
+            (item) => {
+              const categoryAgents = filtered.filter((agent) => agent.category === item.slug);
+              if (categoryAgents.length === 0) return null;
+              return (
+                <section key={item.slug} className="space-y-2">
+                  <div className="flex items-end justify-between border-b border-border/70 pb-2">
+                    <div>
+                      <p className="font-heading text-base font-semibold text-foreground">{item.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{item.tagline}</p>
+                    </div>
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {categoryAgents.length} listed
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {categoryAgents.map((agent) => (
+                      <AgentCard key={agent.id} agent={agent} categoryLabel={CATEGORY_MAP[agent.category]?.shortName} />
+                    ))}
+                  </div>
+                </section>
+              );
+            }
+          )}
         </div>
       ) : (
         <div className="mt-3 rounded-lg border border-border bg-card px-4 py-10 text-sm text-muted-foreground">

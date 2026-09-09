@@ -10,17 +10,14 @@
 
 import type { 
   X402PaymentRequest, 
-  X402PaymentResponse, 
   X402PaymentStatus,
   EndpointCallRequest,
   EndpointCallResponse 
 } from "@/lib/types";
-import { executeAgentRuntime } from "@/lib/agent-runtime-service";
 
 // Re-export types for convenience
 export type { 
   X402PaymentRequest, 
-  X402PaymentResponse, 
   X402PaymentStatus,
   EndpointCallRequest,
   EndpointCallResponse
@@ -161,122 +158,72 @@ export function validateX402Request(request: X402PaymentRequest): { valid: boole
 }
 
 /**
- * Simulate x402 payment execution (placeholder for real implementation).
- * In production, this would interact with the actual x402 payment protocol
- * via smart contracts or the Altana SDK.
- */
-export async function executeX402Payment(
-  request: X402PaymentRequest,
-  paymentId: string
-): Promise<X402PaymentResponse> {
-  const now = Date.now();
-  
-  // Validate the request first
-  const validation = validateX402Request(request);
-  if (!validation.valid) {
-    return {
-      status: "failed",
-      error: validation.error,
-      timestamp: now,
-    };
-  }
-
-  // Create payment record
-  const paymentRecord: StoredX402Payment = {
-    id: paymentId,
-    endpoint: request.endpoint,
-    amount: request.amount,
-    currency: request.currency,
-    recipientAddress: request.recipientAddress,
-    status: "pending",
-    createdAt: now,
-    updatedAt: now,
-  };
-  saveX402Payment(paymentRecord);
-
-  try {
-    // TODO: Implement actual x402 payment execution
-    // This would involve:
-    // 1. Creating payment signature
-    // 2. Calling x402 smart contract
-    // 3. Getting transaction hash
-    // 4. Waiting for confirmation
-    
-    // For now, simulate a successful payment
-    // In production, replace with actual blockchain interaction
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    const updatedRecord: StoredX402Payment = {
-      ...paymentRecord,
-      status: "paid",
-      updatedAt: Date.now(),
-    };
-    saveX402Payment(updatedRecord);
-
-    return {
-      status: "paid",
-      paymentId,
-      timestamp: Date.now(),
-    };
-  } catch (err) {
-    const failedRecord: StoredX402Payment = {
-      ...paymentRecord,
-      status: "failed",
-      error: err instanceof Error ? err.message : "Payment execution failed",
-      updatedAt: Date.now(),
-    };
-    saveX402Payment(failedRecord);
-
-    return {
-      status: "failed",
-      error: failedRecord.error,
-      timestamp: Date.now(),
-    };
-  }
-}
-
-/**
  * Execute an endpoint call with optional x402 payment.
  */
 export async function executeEndpointCall(
   callRequest: EndpointCallRequest
 ): Promise<EndpointCallResponse> {
   const now = Date.now();
-  const paymentId = generatePaymentId();
 
   try {
-    // Execute payment if required
-    let paymentResult: X402PaymentResponse | undefined;
     if (callRequest.requiresPayment && callRequest.payment) {
-      paymentResult = await executeX402Payment(callRequest.payment, paymentId);
-      
-      if (paymentResult.status !== "paid") {
-        return {
-          success: false,
-          error: `Payment failed: ${paymentResult.error}`,
-          payment: paymentResult,
-          timestamp: now,
-        };
-      }
+      return { success: false, error: "x402 settlement is disabled until a signed BSC transaction adapter is implemented.", timestamp: now };
     }
 
-    // Extract agent slug from endpoint URL
-    const agentSlug = callRequest.endpoint.split('/').pop() || 'unknown';
-    const method = callRequest.method || 'default';
+    if (!/^https:\/\//i.test(callRequest.endpoint)) {
+      throw new Error("Agent endpoint must use HTTPS.");
+    }
 
-    // Execute the actual agent runtime call
-    const runtimeResult = await executeAgentRuntime(agentSlug, method, callRequest.parameters);
-    
-    return {
-      success: runtimeResult.success,
-      data: {
-        message: runtimeResult.result.message,
+    // A2A JSON-RPC: the method field in HevoLaunch is the agent skill
+    // (for example `negotiate`), while the transport method is message/send.
+    // This reaches the live endpoint declared by the mainnet registry rather
+    // than returning an internal/demo runtime response.
+    const skill = callRequest.method || "negotiate";
+    const messageId = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `hevo-${Date.now()}`;
+    const payload = {
+      jsonrpc: "2.0",
+      id: messageId,
+      method: "message/send",
+      params: {
+        message: {
+          messageId,
+          role: "user",
+          parts: [{ kind: "data", data: { skill, ...(callRequest.parameters || {}) } }],
+        },
+      },
+    };
+
+    const response = await fetch("/api/agent-call", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
         endpoint: callRequest.endpoint,
-        method: method,
+        agentId: callRequest.agentId,
+        chainId: callRequest.chainId,
+        payload,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    const proxyBody = (await response.json()) as { response?: unknown; error?: unknown };
+    const responseBody = (proxyBody.response ?? proxyBody) as Record<string, unknown>;
+    const rpcError = responseBody.error;
+    if (!response.ok || rpcError) {
+      const message = rpcError && typeof rpcError === "object" && "message" in rpcError
+        ? String((rpcError as { message?: unknown }).message)
+        : `Agent endpoint returned HTTP ${response.status}`;
+      throw new Error(message);
+    }
+
+    return {
+      success: true,
+      data: {
+        endpoint: callRequest.endpoint,
+        method: skill,
         parameters: callRequest.parameters ? JSON.stringify(callRequest.parameters) : undefined,
-        runtimeOutput: runtimeResult.result.output,
-      } as Record<string, string | number | boolean | null | undefined>,
-      payment: paymentResult,
+        response: responseBody,
+      },
       timestamp: Date.now(),
     };
   } catch (err) {
@@ -286,6 +233,74 @@ export async function executeEndpointCall(
       timestamp: Date.now(),
     };
   }
+}
+
+export interface AgentQuote {
+  budgetRaw: string;
+  currency: string;
+  anchoredTask: string;
+  estimatedCompletionSeconds?: number;
+  quoteExpiresAt?: number;
+}
+
+/** Request a provider quote without payment or wallet access. */
+export async function negotiateAgentQuote(
+  request: Pick<EndpointCallRequest, "endpoint" | "agentId" | "chainId">,
+  taskDescription: string
+): Promise<AgentQuote> {
+  const result = await executeEndpointCall({
+    ...request,
+    method: "negotiate",
+    parameters: {
+      task_description: taskDescription,
+      terms: {
+        deliverables: "Return the requested category-specific result with source timestamps and risks.",
+        quality_standards: "Do not fabricate APR, PnL, balances, or health factors. Mark unavailable values clearly.",
+      },
+    },
+    requiresPayment: false,
+  });
+
+  if (!result.success) throw new Error(result.error || "The provider did not return a quote.");
+  const rpc = result.data?.response as Record<string, unknown> | undefined;
+  const rpcResult = rpc?.result as Record<string, unknown> | undefined;
+  const parts = Array.isArray(rpcResult?.parts) ? rpcResult.parts : [];
+  const responsePart = parts.find((part) => {
+    if (!part || typeof part !== "object") return false;
+    const data = (part as { data?: unknown }).data;
+    return Boolean(data && typeof data === "object" && "response" in data);
+  }) as { data?: { response?: unknown } } | undefined;
+  const partData = responsePart?.data as Record<string, unknown> | undefined;
+  const provider = partData?.response;
+  if (!provider || typeof provider !== "object") throw new Error("Provider returned no quote payload.");
+  const quote = provider as {
+    accepted?: unknown;
+    terms?: { price?: unknown; currency?: unknown };
+    estimated_completion_seconds?: unknown;
+    quote_expires_at?: unknown;
+  };
+  if (quote.accepted !== true || typeof quote.terms?.price !== "string" || !/^\d+$/.test(quote.terms.price)) {
+    throw new Error("Provider rejected the requested task or returned an invalid quote.");
+  }
+  return {
+    budgetRaw: quote.terms.price,
+    currency: typeof quote.terms.currency === "string" ? quote.terms.currency : "$U",
+    anchoredTask: JSON.stringify({
+      type: "erc8183-signed-quote",
+      request: partData?.request,
+      request_hash: partData?.request_hash,
+      response: partData?.response,
+      response_hash: partData?.response_hash,
+      negotiation_hash: partData?.negotiation_hash,
+      provider_sig: partData?.provider_sig,
+      chain_id: partData?.chain_id,
+      verifying_contract: partData?.verifying_contract,
+    }),
+    estimatedCompletionSeconds: typeof quote.estimated_completion_seconds === "number"
+      ? quote.estimated_completion_seconds
+      : undefined,
+    quoteExpiresAt: typeof quote.quote_expires_at === "number" ? quote.quote_expires_at : undefined,
+  };
 }
 
 /**
@@ -307,9 +322,5 @@ export async function getEndpointPaymentRequirements(
   currency?: string;
 } | null> {
   void _endpoint;
-  return {
-    requiresPayment: true,
-    amount: "0.05",
-    currency: DEFAULT_X402_CURRENCY,
-  };
+  return null;
 }

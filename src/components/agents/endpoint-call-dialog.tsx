@@ -33,23 +33,21 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
-import { slugToBackendEndpoint } from "@/lib/flyio-backend";
-
 type CallStage = "setup" | "payment" | "calling" | "result";
 
 export function EndpointCallDialog({ agent }: { agent: Agent }) {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<CallStage>("setup");
-  const [method, setMethod] = useState("");
-  const [parameters, setParameters] = useState("");
+  const [method, setMethod] = useState("negotiate");
+  const [parameters, setParameters] = useState('{"task_description":"Read-only BNB Chain analysis. Do not execute trades, move funds, or request wallet access.","terms":{"deliverables":"Return a sourced result with assumptions and risks.","quality_standards":"Do not fabricate APR or PnL. Mark unavailable values clearly."}}');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<EndpointCallResponse | null>(null);
   const [paymentRequired, setPaymentRequired] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const targetEndpoint = agent.a2aEndpoint || `https://hevo-agents.fly.dev/${slugToBackendEndpoint(agent.slug)}`;
-  const canCallDirectly = Boolean(targetEndpoint) && agent.endpointStatus !== "unhealthy";
+  const targetEndpoint = agent.a2aEndpoint || null;
+  const canCallDirectly = Boolean(targetEndpoint) && agent.endpointStatus === "healthy";
 
   async function handleCheckRequirements() {
     if (!targetEndpoint) return;
@@ -99,6 +97,8 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
 
       const callRequest: EndpointCallRequest = {
         endpoint: targetEndpoint,
+        agentId: agent.agentId,
+        chainId: agent.identityChainId,
         method: method || undefined,
         parameters: parsedParams,
         requiresPayment: paymentRequired,
@@ -133,8 +133,8 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
     setStage("setup");
     setResponse(null);
     setError(null);
-    setMethod("");
-    setParameters("");
+    setMethod("negotiate");
+    setParameters('{"task_description":"Read-only BNB Chain analysis. Do not execute trades, move funds, or request wallet access.","terms":{"deliverables":"Return a sourced result with assumptions and risks.","quality_standards":"Do not fabricate APR or PnL. Mark unavailable values clearly."}}');
   }
 
   function handleClose() {
@@ -170,7 +170,7 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
               <DialogTitle>Call {agent.name} Endpoint</DialogTitle>
               <DialogDescription>
                 Directly call the agent&apos;s A2A/MCP endpoint with custom parameters.
-                {agent.x402Supported && " This agent supports x402 per-request payments."}
+                {agent.x402Supported && " The registry advertises x402, but HevoLaunch per-request settlement is currently disabled."}
               </DialogDescription>
             </DialogHeader>
 
@@ -209,10 +209,10 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Method (optional)</label>
-                  <Input
-                    value={method}
-                    onChange={(e) => setMethod(e.target.value)}
-                    placeholder="e.g., analyze_portfolio"
+                    <Input
+                      value={method}
+                      onChange={(e) => setMethod(e.target.value)}
+                      placeholder="e.g., negotiate"
                   />
                 </div>
 
@@ -221,7 +221,7 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
                   <Textarea
                     value={parameters}
                     onChange={(e) => setParameters(e.target.value)}
-                    placeholder='{"key": "value"}'
+                    placeholder='{"task_description":"Read-only BNB analysis","terms":{"deliverables":"Return a sourced result","quality_standards":"No fabricated metrics"}}'
                     className="font-mono text-xs"
                     rows={4}
                   />
@@ -235,7 +235,7 @@ export function EndpointCallDialog({ agent }: { agent: Agent }) {
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3">
                     <Zap className="h-4 w-4 text-primary" />
                     <p className="text-xs text-muted-foreground">
-                      This agent supports x402 payments. Payment will be required before the call.
+                      The registry advertises x402, but real BSC settlement is disabled here. This test will not request funds.
                     </p>
                   </div>
                 )}

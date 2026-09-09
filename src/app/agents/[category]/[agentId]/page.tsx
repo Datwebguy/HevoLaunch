@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { CategorySlug } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, BadgeCheck, ExternalLink, ShieldCheck } from "lucide-react";
+import { BadgeCheck, ExternalLink, ShieldCheck } from "lucide-react";
 
 import { getCategory } from "@/lib/categories";
 import { AGENTS, enrichAgent, getAgentBySlug, getAgentsByCategory } from "@/lib/agents";
@@ -16,7 +16,6 @@ import { AgentCard } from "@/components/agents/agent-card";
 import { AgentHeaderStats } from "@/components/agents/agent-header-stats";
 import { AgentDetailsTabs } from "@/components/agents/agent-details-tabs";
 import { HireButton } from "@/components/hiring/hire-button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AgentPageProps {
   params: Promise<{
@@ -60,7 +59,12 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
   if (!category) notFound();
 
   const agent = await enrichAgent(raw);
+  // 8004scan verification is a separate trust signal. A mainnet identity
+  // with a healthy registered endpoint remains a valid marketplace profile
+  // while third-party verification is pending.
+  if (agent.identityChainId !== 56 || agent.endpointStatus !== "healthy") notFound();
   const scanUrl = scanAgentUrl(agent.identityChainId ?? 56, agent.agentId);
+  const bscScanUrl = `https://bscscan.com/address/${agent.agentIdentityAddress}`;
   const similarAgents = getAgentsByCategory(raw.category).filter(
     (a) => a.id !== agent.id
   );
@@ -108,18 +112,6 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
           </div>
         </div>
       </div>
-
-      {agent.endpointStatus === "unhealthy" && (
-        <Alert variant="destructive" className="mt-6">
-          <AlertTriangle />
-          <AlertTitle>Runtime last seen unhealthy</AlertTitle>
-          <AlertDescription>
-            8004scan reported this agent&apos;s A2A endpoint as down (HTTP 410
-            or similar). Hiring still opens an on-chain job; a deliverable
-            will not arrive until the seller runtime is redeployed.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Reactive Header Stats Grid */}
       <AgentHeaderStats agent={agent} scanUrl={scanUrl} />
@@ -180,9 +172,11 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
                       )}
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-muted-foreground">Verification Status</span>
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                        <span className={agent.verified
+                          ? "inline-flex items-center gap-1 text-xs text-emerald-500 font-medium"
+                          : "inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-300 font-medium"}>
                           <ShieldCheck className="size-3.5" />
-                          ERC-8004 Verified
+                          {agent.verified ? "ERC-8004 Verified" : "ERC-8004 verification pending"}
                         </span>
                       </div>
 
@@ -195,6 +189,15 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
                         className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline pt-1"
                       >
                         View on 8004scan
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                      <a
+                        href={bscScanUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        View owner on BscScan
                         <ExternalLink className="size-3.5" />
                       </a>
                     </CardContent>
@@ -211,12 +214,14 @@ export default async function AgentDetailPage({ params }: AgentPageProps) {
               <div>
                 <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Pricing</p>
                 <p className="mt-1 font-heading text-2xl font-bold text-foreground">
-                  {agent.pricing.model === "performance-fee"
+                  {agent.pricing.model === "quote"
+                    ? "Live provider quote"
+                    : agent.pricing.model === "performance-fee"
                     ? `${agent.pricing.amount}${agent.pricing.cadence}`
                     : `${agent.pricing.amount} ${agent.pricing.currency}`}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {agent.pricing.model !== "performance-fee" && agent.pricing.cadence}
+                  {agent.pricing.model !== "performance-fee" && agent.pricing.model !== "quote" && agent.pricing.cadence}
                 </p>
               </div>
 

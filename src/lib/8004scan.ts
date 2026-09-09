@@ -29,12 +29,12 @@
 
 import type { EndpointStatus } from "@/lib/types";
 
-const PUBLIC_BASE_URL = "https://8004scan.io/api/v1/public";
-const AUTH_BASE_URL = "https://8004scan.io/api/v1";
+const API_BASE_URL = "https://api.8004scan.io/api/v1";
+export const MAINNET_CHAIN_ID = 56;
 
 export function scanAgentUrl(chainId: number, tokenId: string | number): string {
-  if (chainId === 97) {
-    return `https://testnet.8004scan.io/agents/bsc-testnet/${tokenId}`;
+  if (chainId !== MAINNET_CHAIN_ID) {
+    throw new Error(`Unsupported agent chain ${chainId}; HevoLaunch is BSC mainnet only.`);
   }
   return `https://8004scan.io/agents/bsc/${tokenId}`;
 }
@@ -55,6 +55,7 @@ export interface ScanAgent {
   description: string;
   image_url: string | null;
   is_verified: boolean;
+  is_active?: boolean;
   is_endpoint_verified?: boolean;
   star_count: number;
   supported_protocols: string[];
@@ -85,12 +86,6 @@ export interface ScanStats {
   daily_new_agents: number;
   daily_feedbacks: number;
   average_feedback_score: number;
-}
-
-interface PublicListResponse<T> {
-  success: boolean;
-  data: T[];
-  meta: { pagination: { page: number; limit: number; total: number; hasMore: boolean } };
 }
 
 interface PublicItemResponse<T> {
@@ -165,12 +160,12 @@ function withParams(base: string, path: string, params?: Record<string, string |
 }
 
 export async function getStats(): Promise<ScanStats> {
-  const res = await fetchJson<PublicItemResponse<ScanStats>>(
-    withParams(PUBLIC_BASE_URL, "/stats"),
+  const res = await fetchJson<ScanStats | PublicItemResponse<ScanStats>>(
+    withParams(API_BASE_URL, "/stats/global"),
     {},
     300
   );
-  return res.data;
+  return "data" in res ? res.data : res;
 }
 
 export interface ListAgentsParams {
@@ -201,35 +196,42 @@ export async function listAgents(
       ...(params.sortBy ? { sort_by: params.sortBy } : {}),
     };
     const res = await fetchJson<AuthListResponse<ScanAgent>>(
-      withParams(AUTH_BASE_URL, "/agents", query),
+      withParams(API_BASE_URL, "/agents", query),
       { "X-API-Key": key },
       60
     );
     return { agents: res.items, total: res.total };
   }
 
-  const query = { ...params, ...(params.limit ? { limit: params.limit } : {}) };
-  const res = await fetchJson<PublicListResponse<ScanAgent>>(
-    withParams(PUBLIC_BASE_URL, "/agents", query),
+  const query = {
+    ...(params.search ? { search: params.search } : {}),
+    ...(params.limit ? { limit: params.limit } : {}),
+    ...(params.chainId !== undefined ? { chain_id: params.chainId } : {}),
+    ...(params.sortBy ? { sort_by: params.sortBy } : {}),
+  };
+  const res = await fetchJson<AuthListResponse<ScanAgent>>(
+    withParams(API_BASE_URL, "/agents", query),
     {},
     300
   );
-  return { agents: res.data, total: res.meta.pagination.total };
+  return { agents: res.items, total: res.total };
 }
 
 export async function getAgent(chainId: number, tokenId: string): Promise<ScanAgent> {
+  if (chainId !== MAINNET_CHAIN_ID) {
+    throw new Error(`Unsupported agent chain ${chainId}; HevoLaunch is BSC mainnet only.`);
+  }
   const key = apiKey();
   if (key) {
     return fetchJson<ScanAgent>(
-      withParams(AUTH_BASE_URL, `/agents/${chainId}/${tokenId}`),
+      withParams(API_BASE_URL, `/agents/${chainId}/${tokenId}`),
       { "X-API-Key": key },
       300
     );
   }
-  const res = await fetchJson<PublicItemResponse<ScanAgent>>(
-    withParams(PUBLIC_BASE_URL, `/agents/${chainId}/${tokenId}`),
+  return fetchJson<ScanAgent>(
+    withParams(API_BASE_URL, `/agents/${chainId}/${tokenId}`),
     {},
     300
   );
-  return res.data;
 }

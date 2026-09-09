@@ -36,6 +36,7 @@ import {
   type FundingCheck,
   type StoredHiringWallet,
 } from "@/lib/altana";
+import { negotiateAgentQuote, type AgentQuote } from "@/lib/x402";
 import { saveSession } from "@/lib/hire-sessions";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,6 +76,9 @@ export function HireDialog({
   const [task, setTask] = useState("");
   const [session, setSession] = useState<HireSession | null>(null);
   const [fundingCheck, setFundingCheck] = useState<FundingCheck | null>(null);
+  const [quote, setQuote] = useState<AgentQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // This is HevoLaunch's own connected wallet (header nav, MetaMask/injected
   // via wagmi) — a completely different address from the Altana smart account
@@ -100,9 +104,11 @@ export function HireDialog({
     // not synchronizing derived render state — the sanctioned effect case.
     if (sendConfirmed) {
       if (wallet) {
-        checkFunding(wallet, parseUnits(String(agent.pricing.amount), 18))
-          .then((check) => setFundingCheck(check))
-          .catch(() => {});
+        if (quote) {
+          void checkFunding(wallet, BigInt(quote.budgetRaw))
+            .then((check) => setFundingCheck(check))
+            .catch(() => {});
+        }
       }
       if (stage === "result" && session?.status === "UNFUNDED") {
         handleRetry();
@@ -116,6 +122,10 @@ export function HireDialog({
 
   async function handleSendFromConnectedWallet() {
     if (!wallet) return;
+    if (!session && !quote) {
+      setSendError("Get the live provider quote before depositing $U.");
+      return;
+    }
     setSendError(null);
     try {
       if (connectedChainId !== bsc.id) {
@@ -123,7 +133,9 @@ export function HireDialog({
       }
       const transferAmount = session
         ? BigInt(session.budget)
-        : parseUnits(String(agent.pricing.amount), 18);
+        : quote
+          ? BigInt(quote.budgetRaw)
+          : parseUnits(String(agent.pricing.amount), 18);
       const hash = await writeContractAsync({
         address: PAYMENT_TOKEN_ADDRESS,
         abi: erc20Abi,
@@ -161,6 +173,8 @@ export function HireDialog({
 
     setSession(null);
     setWalletError(null);
+    setQuote(null);
+    setQuoteError(null);
 
     const existing = getStoredHiringWallet(connectedAddress);
     if (!existing) {
@@ -173,9 +187,7 @@ export function HireDialog({
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
-      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
-        .then((check) => setFundingCheck(check))
-        .catch(() => {});
+      setFundingCheck(null);
     } else {
       setWalletError(result.error);
       setStage("wallet");
@@ -201,9 +213,7 @@ export function HireDialog({
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
-      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
-        .then((check) => setFundingCheck(check))
-        .catch(() => {});
+      setFundingCheck(null);
     } else {
       setWalletError(result.error);
     }
@@ -218,9 +228,7 @@ export function HireDialog({
       setWallet(result.wallet);
       setSigner(result.signer);
       setStage("review");
-      checkFunding(result.wallet, parseUnits(String(agent.pricing.amount), 18))
-        .then((check) => setFundingCheck(check))
-        .catch(() => {});
+      setFundingCheck(null);
     } else {
       setWalletError(result.error);
     }
@@ -237,9 +245,40 @@ export function HireDialog({
       setStage("review");
       setSession(null);
       setFundingCheck(null);
+      setQuote(null);
     } else {
       setWalletError(result.error);
       setStage("wallet");
+    }
+  }
+
+  function defaultTaskDescription() {
+    return `Run ${agent.capabilities[0]?.toLowerCase() ?? "your service"} for my portfolio on BNB Smart Chain.`;
+  }
+
+  async function handleGetQuote() {
+    if (!agent.a2aEndpoint) {
+      setQuoteError("This agent has no registered A2A endpoint.");
+      return;
+    }
+    setQuoteLoading(true);
+    setQuoteError(null);
+    setFundingCheck(null);
+    try {
+      const nextQuote = await negotiateAgentQuote(
+        { endpoint: agent.a2aEndpoint, agentId: agent.agentId, chainId: agent.identityChainId },
+        task.trim() || defaultTaskDescription()
+      );
+      setQuote(nextQuote);
+      if (wallet) {
+        const check = await checkFunding(wallet, BigInt(nextQuote.budgetRaw));
+        setFundingCheck(check);
+      }
+    } catch (err) {
+      setQuote(null);
+      setQuoteError(err instanceof Error ? err.message : "The provider did not return a quote.");
+    } finally {
+      setQuoteLoading(false);
     }
   }
 
@@ -247,7 +286,19 @@ export function HireDialog({
     if (!wallet || !signer || fundingLock.current) return;
     fundingLock.current = true;
     setBusy(true);
-    const draft = buildHireSession(agent, wallet.address, task, connectedAddress as `0x${string}` | undefined);
+    if (!quote) {
+      setQuoteError("Get a live provider quote before funding this hire.");
+      fundingLock.current = false;
+      return;
+    }
+    const draft = buildHireSession(
+      agent,
+      wallet.address,
+      task,
+      connectedAddress as `0x${string}` | undefined,
+      quote.budgetRaw,
+      quote.anchoredTask
+    );
     setSession(draft);
     setStage("funding");
 
@@ -282,7 +333,7 @@ export function HireDialog({
     setFundingCheck(null);
   }
 
-  const budgetLabel = `${agent.pricing.amount} $U`;
+  const budgetLabel = quote ? `${formatUnits(BigInt(quote.budgetRaw), 18)} ${quote.currency}` : "Live quote required";
   const needsU = fundingCheck ? fundingCheck.balanceRaw < fundingCheck.requiredRaw : true;
   const needsGas = fundingCheck ? !fundingCheck.hasGas : true;
 
@@ -408,11 +459,22 @@ export function HireDialog({
                 <span className="font-medium text-foreground">Task</span>
                 <Textarea
                   value={task}
-                  onChange={(e) => setTask(e.target.value)}
+                  onChange={(e) => {
+                    setTask(e.target.value);
+                    setQuote(null);
+                    setQuoteError(null);
+                    setFundingCheck(null);
+                  }}
                   placeholder={`Run ${agent.capabilities[0]?.toLowerCase() ?? "your service"} for my portfolio on BNB Smart Chain.`}
                   rows={3}
                 />
               </label>
+
+              {quoteError && <p className="text-xs text-destructive">{quoteError}</p>}
+              <Button type="button" variant="outline" className="w-full" onClick={handleGetQuote} disabled={quoteLoading || busy}>
+                {quoteLoading ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                {quoteLoading ? "Requesting live quote…" : quote ? "Refresh live quote" : "Get live provider quote"}
+              </Button>
 
               <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2.5">
                 <span className="text-muted-foreground">Escrow budget</span>
@@ -513,7 +575,7 @@ export function HireDialog({
             </div>
 
             <DialogFooter>
-              <Button onClick={handleFund} className="w-full" disabled={busy}>
+              <Button onClick={handleFund} className="w-full" disabled={busy || !quote}>
                 {busy && <Loader2 className="animate-spin" />}
                 {busy ? "Funding…" : "Fund & Hire"}
               </Button>

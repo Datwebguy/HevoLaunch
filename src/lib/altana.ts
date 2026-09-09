@@ -5,10 +5,12 @@ import type { Agent, HireSession } from "@/lib/types";
 import {
   createClient,
   BNB,
+  buildClaimRefundCall,
   erc8183Addresses,
   getErc8183DeliverableUrl,
   getErc8183Job,
   hireErc8183Agent,
+  settleErc8183Job,
   signerFromPasskey,
   type PasskeyCredential,
   type Signer,
@@ -20,6 +22,8 @@ const WALLET_STORAGE_KEY = "hevolaunch:altana-wallet";
 
 /** $U's real ERC-20 contract address on BNB Smart Chain Mainnet, read from the SDK's own registry. */
 export const PAYMENT_TOKEN_ADDRESS = erc8183Addresses(BNB.chainId).paymentToken;
+export const ESCROW_COMMERCE_ADDRESS = erc8183Addresses(BNB.chainId).commerce;
+export const ESCROW_POLICY_ADDRESS = erc8183Addresses(BNB.chainId).policy;
 const PAYMENT_TOKEN = PAYMENT_TOKEN_ADDRESS;
 
 export interface StoredHiringWallet {
@@ -108,7 +112,7 @@ export function clearStoredHiringWallet(account?: string): void {
   }
 }
 
-function formatPasskeyError(err: unknown, action: "create" | "recover"): string {
+function formatPasskeyError(err: unknown): string {
   if (!err) return "Passkey operation was not completed.";
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
@@ -158,7 +162,7 @@ export async function createFreshPasskeyWallet(account?: string): Promise<Create
     console.warn("[altana] Fresh passkey wallet creation failed:", err);
     return {
       ok: false,
-      error: formatPasskeyError(err, "create"),
+      error: formatPasskeyError(err),
     };
   }
 }
@@ -203,7 +207,7 @@ export async function recoverHiringWallet(account?: string): Promise<CreateHirin
     console.warn("[altana] Passkey wallet recovery failed:", err);
     return {
       ok: false,
-      error: formatPasskeyError(err, "recover"),
+      error: formatPasskeyError(err),
     };
   }
 }
@@ -222,8 +226,13 @@ export function buildHireSession(
   agent: Agent,
   hirerAddress: `0x${string}`,
   task?: string,
-  connectedAddress?: `0x${string}`
+  connectedAddress?: `0x${string}`,
+  quotedBudgetRaw?: string,
+  quotedExecutionTask?: string
 ): HireSession {
+  if (agent.pricing.model === "quote" && !quotedBudgetRaw) {
+    throw new Error("A live provider quote is required before creating this hire.");
+  }
   const now = Date.now();
   return {
     id: `local_${randomHex(8)}`,
@@ -236,9 +245,10 @@ export function buildHireSession(
     connectedAddress,
     provider: agent.agentIdentityAddress,
     task: task?.trim() || defaultTask(agent),
+    executionTask: quotedExecutionTask,
     // $U uses 18 decimals, like the agent's listed USDC price — treated
     // 1:1 since both are USD-pegged stables.
-    budget: parseUnits(String(agent.pricing.amount), 18).toString(),
+    budget: quotedBudgetRaw || parseUnits(String(agent.pricing.amount), 18).toString(),
     expiredAt: toDeliveryDeadline(),
     status: "OPEN",
     createdAt: now,
@@ -316,7 +326,7 @@ export async function fundHireSession(
       signer,
       {
         provider: session.provider,
-        task: session.task,
+        task: session.executionTask || session.task,
         budget: requiredRaw,
         deadlineSeconds,
       },
@@ -389,4 +399,30 @@ export async function refreshJobStatus(session: HireSession): Promise<HireSessio
       updatedAt: Date.now(),
     };
   }
+}
+
+/** Dispute a submitted result through the real ERC-8183 policy window. */
+export async function disputeHireSession(session: HireSession, account: `0x${string}`) {
+  if (!session.jobId) throw new Error("This hire has no on-chain job ID.");
+  const recovered = await recoverHiringWallet(account);
+  if (!recovered.ok) throw new Error(recovered.error);
+  return settleErc8183Job(
+    recovered.wallet,
+    recovered.signer,
+    { jobId: BigInt(session.jobId), action: "dispute" },
+    { network: BNB }
+  );
+}
+
+/** Reclaim escrow after an expired job through the real ERC-8183 kernel. */
+export async function claimExpiredHireSession(session: HireSession, account: `0x${string}`) {
+  if (!session.jobId) throw new Error("This hire has no on-chain job ID.");
+  const recovered = await recoverHiringWallet(account);
+  if (!recovered.ok) throw new Error(recovered.error);
+  return getAltanaClient().execute({
+    wallet: recovered.wallet,
+    signer: recovered.signer,
+    chainId: BNB.chainId,
+    calls: buildClaimRefundCall(BNB.chainId, BigInt(session.jobId)),
+  });
 }

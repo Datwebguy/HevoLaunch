@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Radio, Search } from "lucide-react";
 
 import { CATEGORY_SLUGS, getCategory } from "@/lib/categories";
-import { enrichAgent, getAgentsByCategory } from "@/lib/agents";
+import { enrichAgent, getAgentsByCategory, isDuplicateOfCurated } from "@/lib/agents";
 import { getLiveAgentsForCategory } from "@/lib/live-agents";
 import { AgentCard } from "@/components/agents/agent-card";
 import { LiveAgentCard } from "@/components/agents/live-agent-card";
@@ -60,8 +60,14 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const agents = await Promise.all(getAgentsByCategory(category.slug).map(enrichAgent));
-  const live = await getLiveAgentsForCategory(category, q);
+  const agents = (await Promise.all(getAgentsByCategory(category.slug).map(enrichAgent))).filter(
+    (agent) => agent.identityChainId === 56 && agent.endpointStatus === "healthy"
+  );
+  const liveResult = await getLiveAgentsForCategory(category, q);
+  const live = {
+    ...liveResult,
+    agents: liveResult.agents.filter((scan) => !isDuplicateOfCurated(scan, agents)),
+  };
 
   return (
     <div className="page-wrap py-10">

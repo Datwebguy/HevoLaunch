@@ -137,10 +137,79 @@
   html {
     border-left: 5px solid var(--primary);
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground transition-colors duration-200;
     font-family: var(--font-sans-family);
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    background-color: #0a1020;
+    background-image:
+      radial-gradient(circle at 50% -10%, rgba(240, 185, 11, 0.08), transparent 34rem),
+      radial-gradient(circle at 100% 42%, rgba(45, 212, 191, 0.045), transparent 30rem),
+      linear-gradient(135deg, #0a1020 0%, #0b1222 48%, #0b1720 100%);
+    background-attachment: fixed;
+  }
+}
+
+.ambient-background {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.dark .ambient-background {
+  opacity: 1;
+}
+
+.ambient-grid {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, black, transparent 82%);
+}
+
+.ambient-orbit {
+  filter: blur(90px);
+  opacity: 0.35;
+  animation: ambient-drift 18s ease-in-out infinite alternate;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.ambient-orbit-gold {
+  background: radial-gradient(circle, rgba(240, 185, 11, 0.24), rgba(245, 158, 11, 0.04) 58%, transparent 72%);
+}
+
+.ambient-orbit-blue {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.18), rgba(30, 64, 175, 0.04) 58%, transparent 72%);
+  animation-delay: -7s;
+}
+
+.ambient-orbit-teal {
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.14), rgba(13, 148, 136, 0.03) 58%, transparent 72%);
+  animation-delay: -12s;
+}
+
+.ambient-scanline {
+  background: linear-gradient(90deg, transparent, rgba(240, 185, 11, 0.28), transparent);
+  box-shadow: 0 0 28px rgba(240, 185, 11, 0.2);
+  opacity: 0.45;
+}
+
+@keyframes ambient-drift {
+  0% { transform: translate3d(-2%, -1%, 0) scale(0.96); }
+  100% { transform: translate3d(3%, 4%, 0) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-background,
+  .ambient-orbit {
+    animation: none;
+    transition: none;
   }
 }
 
@@ -166,6 +235,12 @@
   align-items: center;
   column-gap: 1rem;
   grid-template-columns: 40px minmax(0, 1fr) auto;
+  min-height: 4.25rem;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.market-row:hover {
+  transform: translateY(-1px);
 }
 
 @media (min-width: 640px) {
